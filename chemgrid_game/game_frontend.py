@@ -27,8 +27,6 @@ class ClickySprite(pygame.sprite.DirtySprite):
 
     def is_clicked(self, pos: Tuple[int, int]):
         clicked = self.rect.collidepoint(*pos)
-        # if clicked:
-        #     print(f"{self.__class__.__name__} was clicked")
         return clicked
 
     def on_click(self, game_state: GameState):
@@ -40,7 +38,6 @@ class ClickySprite(pygame.sprite.DirtySprite):
 
 
 class ClickySpriteWithImg(ClickySprite):
-
     def __init__(self, x, y, w, h):
         super().__init__()
         self.image = pygame.Surface((w, h))
@@ -53,10 +50,10 @@ class ClickySpriteWithImg(ClickySprite):
 
 
 class Button(ClickySprite):
-
-    def __init__(self, x, y, img_path: str):
+    def __init__(self, x, y, w, h, img_path: str):
         super().__init__()
-        self.image = pygame.image.load(img_path)
+        image = pygame.image.load(img_path)
+        self.image = pygame.transform.scale(image, (w, h))
         self.rect = self.image.get_rect()
         self.rect.x = x
         self.rect.y = y
@@ -159,8 +156,8 @@ class WhiteArrow(Button):
 
 
 class AtomSprite(ClickySpriteWithImg):
-    def __init__(self, x, y, h, w, grid_pos, color):
-        super().__init__(x, y, h, w)
+    def __init__(self, x, y, w, h, grid_pos, color):
+        super().__init__(x, y, w, h)
         self.grid_pos = grid_pos
         self.c = w / 2
         self.color = color
@@ -186,8 +183,8 @@ class AtomSprite(ClickySpriteWithImg):
 
 
 class ColorPickerSprite(ClickySpriteWithImg):
-    def __init__(self, x, y, h, w, color):
-        super().__init__(x, y, h, w)
+    def __init__(self, x, y, w, h, color):
+        super().__init__(x, y, w, h)
         self.c = w / 2
         self.color = color
         self.image.fill(color)
@@ -198,9 +195,7 @@ class ColorPickerSprite(ClickySpriteWithImg):
 
 
 class ColorPickerBar(ClickySpriteWithImg):
-    def __init__(self, x, y, conf: Config):
-        w = 4 * conf.atom_width + 3 * conf.margin
-        h = conf.atom_width
+    def __init__(self, x, y, w, h):
         super().__init__(x, y, w, h)
         self.atoms = []
 
@@ -224,9 +219,8 @@ class ColorPickerBar(ClickySpriteWithImg):
 
 
 class GridSprite(ClickySpriteWithImg):
-    def __init__(self, x, y, game_state: GameState):
-        conf = game_state.config
-        super().__init__(x, y, conf.get_big_mol_size(), conf.get_big_mol_size())
+    def __init__(self, x, y, w, h):
+        super().__init__(x, y, w, h)
         self.atoms = []
 
     def create_atoms(self, game_state):
@@ -273,10 +267,9 @@ class GameBond(ClickySpriteWithImg):
 
 
 class GameMolecule(ClickySpriteWithImg):
-    def __init__(self, x, y, molecule: Molecule, game_state: GameState):
-        conf = game_state.config
-        super().__init__(x, y, conf.get_big_mol_size(), conf.get_big_mol_size())
-        # Set our transparent color
+    def __init__(self, x, y, w, h, molecule: Molecule):
+        super().__init__(x, y, w, h)
+        # Set transparent color
         self.image.set_colorkey(BLACK)
         self.molecule = molecule
         self.atom_colors = [WHITE, RED, GREEN, BLUE]
@@ -352,11 +345,8 @@ class GameMolecule(ClickySpriteWithImg):
 
 
 class TinyMolecule(ClickySpriteWithImg):
-    def __init__(self, x, y, molecule: Molecule, game_state: GameState, is_survival_mol=False, is_selected=False):
-        conf = game_state.config
-        self.w = conf.get_tiny_mol_size()
-        self.h = conf.get_tiny_mol_size()
-        super().__init__(x, y, self.w, self.h)
+    def __init__(self, x, y, w, h, molecule: Molecule, is_survival_mol=False, is_selected=False):
+        super().__init__(x, y, w, h)
         self.molecule = molecule
         self.is_survival_mol = is_survival_mol
         self.is_selected = is_selected
@@ -365,7 +355,7 @@ class TinyMolecule(ClickySpriteWithImg):
         conf = game_state.config
         if self.is_selected:
             d = conf.get_tiny_mol_size()
-            pygame.draw.rect(self.image, WHITE, (0, 0, d, d), 1)
+            pygame.draw.rect(self.image, WHITE, (0, 0, d, d), max(int(conf.scale), 1))
 
         for row in range(conf.mol_grid_length):
             for column in range(conf.mol_grid_length):
@@ -403,8 +393,9 @@ class TinyMolecule(ClickySpriteWithImg):
 
     def update(self, game_state: GameState) -> None:
         self.image.fill(BLACK)
+        h = w = game_state.config.get_tiny_mol_size() + game_state.config.scale
         if self.is_survival_mol and game_state.survived():
-            pygame.draw.rect(self.image, WHITE, [0, 0, 40, 40])
+            pygame.draw.rect(self.image, WHITE, [0, 0, w, h])
 
         self.draw_atoms(game_state)
         self.draw_bonds(game_state)
@@ -431,15 +422,19 @@ class ContractViewer(ClickySpriteWithImg):
 
     def update(self, game_state: GameState) -> None:
         contracts = game_state.contracts[game_state.contracts_start:]
+        w_tiny_mol = h_tiny_mol = game_state.config.get_tiny_mol_size()
+        w_arrow = game_state.config.locations["white_arrow"]["w"]
+        h_arrow = game_state.config.locations["white_arrow"]["w"]
+        scale = game_state.config.scale
         for i, contract in enumerate(contracts):
-            y = i * 50
-            pygame.draw.rect(self.image, WHITE, rect=(0, y, 150, 50), width=3)
-            mol = TinyMolecule(20, y + 5, contract[1], game_state)
+            y = i * 50 * scale
+            pygame.draw.rect(self.image, WHITE, rect=(0 * scale, y, 150 * scale, 50 * scale), width=3 * scale)
+            mol = TinyMolecule(20 * scale, y + 5 * scale, w_tiny_mol, h_tiny_mol, molecule=contract[1])
             mol.update(game_state)
             self.image.blit(mol.image, mol.rect)
-            arrow = WhiteArrow(70, y + 15, self.arrow_path)
+            arrow = WhiteArrow(70 * scale, y + 15 * scale, w_arrow, h_arrow, self.arrow_path)
             self.image.blit(arrow.image, arrow.rect)
-            mol = TinyMolecule(95, y + 5, contract[0], game_state)
+            mol = TinyMolecule(95 * scale, y + 5 * scale, w_tiny_mol, h_tiny_mol, contract[0])
             mol.update(game_state)
             self.image.blit(mol.image, mol.rect)
 
@@ -466,9 +461,10 @@ class Inventory(ClickySpriteWithImg):
             mols = inventory[offset:offset + conf.visible_inventory_len]
 
         game_state.logger.debug(f"Drawing items {len(mols)}")
+        w = h = game_state.config.get_tiny_mol_size()
         for i, mol in enumerate(mols):
             y = i * (conf.get_tiny_mol_size() + conf.margin)
-            game_mol = TinyMolecule(0, y, mol, game_state, is_selected=mol in selected_mols)
+            game_mol = TinyMolecule(0, y, w, h, molecule=mol, is_selected=mol in selected_mols)
             self.visible_mols.append(game_mol)
 
     def update(self, game_state: GameState):
@@ -497,29 +493,27 @@ class GameFrontend:
 
         self.config = config
 
-        size = (256 * config.size_mult, 256 * config.size_mult)
+        size = (256 * config.scale, 256 * config.scale)
         self.screen = pygame.display.set_mode(size)
         self.clock = pygame.time.Clock()
 
-        buttons_dir = Path(__file__).parent.joinpath("pix")
+        locs = config.get_locations()
 
-        self.join_button = JoinButton(50, 220, f'{buttons_dir}/join_small.png')
-        self.break_button = BreakButton(80, 220, f'{buttons_dir}/break_small.png')
-        self.create_contract_button = ContractCreateButton(50, 235, f'{buttons_dir}/contract_small.png')
-        self.view_contracts_button = ContractViewButton(80, 235, f'{buttons_dir}/contract_small_2.png')
-        self.accept_button = AcceptButton(135, 220, f'{buttons_dir}/accept.png')
-        self.cancel_button = CancelButton(160, 220, f'{buttons_dir}/cancel.png')
-        self.up_arrow = UpArrow(208, 1, f'{buttons_dir}/up_triangle.png')
-        self.down_arrow = DownArrow(208, 230, f'{buttons_dir}/down_triangle.png')
-        self.left_arrow = LeftArrow(10, 100, f'{buttons_dir}/left_triangle.png')
-        self.right_arrow = RightArrow(190, 100, f'{buttons_dir}/right_triangle.png')
-        self.white_arrow = WhiteArrow(100, 35, f'{buttons_dir}/right_triangle_white.png')
-
-        self.inventory = Inventory(205, 20, config.get_tiny_mol_size(), config.get_inventory_size())
-        # self.survival_mol = TinyMolecule(5, 220, self.game_state.survival_molecule, self.game_state, True)
+        self.join_button = JoinButton(**locs["join_button"])
+        self.break_button = BreakButton(**locs["break_button"])
+        self.create_contract_button = ContractCreateButton(**locs["create_contract_button"])
+        self.view_contracts_button = ContractViewButton(**locs["view_contracts_button"])
+        self.accept_button = AcceptButton(**locs["accept_button"])
+        self.cancel_button = CancelButton(**locs["cancel_button"])
+        self.up_arrow = UpArrow(**locs["up_arrow"])
+        self.down_arrow = DownArrow(**locs["down_arrow"])
+        self.left_arrow = LeftArrow(**locs["left_arrow"])
+        self.right_arrow = RightArrow(**locs["right_arrow"])
+        self.white_arrow = WhiteArrow(**locs["white_arrow"])
+        self.inventory = Inventory(**locs["inventory"])
+        self.color_picker = ColorPickerBar(**locs["color_picker"])
+        self.contract_viewer = ContractViewer(**locs["contract_viewer"])
         self.survival_mol = None
-        self.color_picker = ColorPickerBar(25 + 2 * config.width, 190, self.config)
-        self.contract_viewer = ContractViewer(30, 20, 160, 150)
         self.active_group = pygame.sprite.Group()
 
         self.done = False
@@ -542,7 +536,7 @@ class GameFrontend:
         self.inventory.create_molecules(self.game_state)
 
     def join_mode(self):
-        grid = GridSprite(5, 5, self.game_state)
+        grid = GridSprite(**self.config.locations["grid"])
         mol1 = self.game_state.get_selected_mols()[0]
         mol2 = self.game_state.get_selected_mols()[1]
         join_pos1 = self.game_state.join_positions[0]
@@ -573,7 +567,8 @@ class GameFrontend:
             if graph_utils.goes_offscreen(mol1.atoms, *join_pos1, self.config.mol_grid_length):
                 self.logger.debug("Join failed (mol 1 goes offscreen)")
             else:
-                mol_sprite = GameMolecule(5, 5, Molecule(shifted1, adjust_top_left=False), self.game_state)
+                mol = Molecule(shifted1, adjust_top_left=False)
+                mol_sprite = GameMolecule(**self.config.locations["game_molecule"], molecule=mol)
                 self.active_group.add(mol_sprite)
                 if join_pos2 is not None:
                     shifted2 = graph_utils.shift_atoms(mol2.atoms, *join_pos2, self.config.mol_grid_length)
@@ -589,7 +584,8 @@ class GameFrontend:
                         is_connected = graph_utils.is_connected(combo_atoms)
                         if sum_matches_parent and is_connected:
                             self.logger.debug("Join success")
-                            mol_sprite = GameMolecule(5, 5, Molecule(shifted2, adjust_top_left=False), self.game_state)
+                            mol = Molecule(shifted2, adjust_top_left=False)
+                            mol_sprite = GameMolecule(**self.config.locations["game_molecule"], molecule=mol)
                             self.active_group.add(mol_sprite)
 
                             combo_atoms = graph_utils.combine_atoms(shifted1, shifted2)
@@ -603,7 +599,7 @@ class GameFrontend:
 
     def break_mode(self):
         mol = self.game_state.get_selected_mols()[0]
-        break_mol = GameMolecule(5, 5, mol, self.game_state)
+        break_mol = GameMolecule(**self.config.locations["game_molecule"], molecule=mol)
         self.active_group.empty()
         self.active_group.add(
             self.inventory,
@@ -621,8 +617,8 @@ class GameFrontend:
     def create_contract_mode(self):
         self.logger.debug("create contract mode")
         selected_mol = self.game_state.get_selected_mols()[0]
-        grid_sprite = GridSprite(5, 5, self.game_state)
-        mol_sprite = GameMolecule(5, 5, self.game_state.demo_molecule, self.game_state)
+        grid_sprite = GridSprite(**self.config.locations["grid"])
+        mol_sprite = GameMolecule(**self.config.locations["game_molecule"], molecule=self.game_state.demo_molecule)
         self.active_group.empty()
         self.active_group.add(
             self.inventory,
@@ -666,7 +662,11 @@ class GameFrontend:
 
     def update_game(self, game_state: GameState):
         self.game_state = game_state
-        self.survival_mol = TinyMolecule(5, 220, self.game_state.survival_molecule, self.game_state, True)
+        self.survival_mol = TinyMolecule(
+            **self.config.locations["survival_molecule"],
+            molecule=self.game_state.survival_molecule,
+            is_survival_mol=True
+        )
 
         self.logger.debug(self.game_state.mode)
         # self.logger.debug(self.active_group)
