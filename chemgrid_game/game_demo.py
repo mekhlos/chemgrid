@@ -17,7 +17,12 @@ if __name__ == '__main__':
     # inventories = [[chemistry.generate_random_mol(i, 2, n_colors, max_size=max_size)] for i in range(n_agents)]
     # inventories = [[Molecule([[1]]), Molecule([[1, 1]])]]
     # config = Config(input_mode="human", fps=30, survival_mols=[DEMO_MOLECULE1], initial_inventories=[[DEMO_MOLECULE2]]
-    config = Config(initial_inventories=tuple(inventories), survival_mols=tuple(targets), logging_level="DEBUG")
+    config = Config(
+        initial_inventories=tuple(inventories),
+        survival_mols=tuple(targets),
+        logging_level="DEBUG",
+        scale=2
+    )
     frontend = GameFrontend(config)
     backend = GameBackend(
         config.initial_inventories, config.survival_mols, config.initial_contracts, logging_level="DEBUG"
