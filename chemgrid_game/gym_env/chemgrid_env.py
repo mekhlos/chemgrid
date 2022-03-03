@@ -2,7 +2,6 @@ from typing import Tuple
 
 import gym
 import numpy as np
-
 from chemgrid_game.game import Game
 from chemgrid_game.game_backend import GameBackend
 from chemgrid_game.game_config import Config
@@ -24,7 +23,7 @@ class ChemGridEnv(gym.Env):
             logging_level=config.logging_level
         )
         self.game = Game(frontend, backend, config)
-        self.logger = setup_logger(self.__class__.__name__, "INFO")
+        self.logger = setup_logger(self.__class__.__name__, config.logging_level)
 
         self.height, self.width = self.game.shape
         shape = self.height, self.width, 3
@@ -50,6 +49,7 @@ class ChemGridEnv(gym.Env):
         else:
             click_coords = np.stack(np.unravel_index(action, (self.height, self.width))).T
 
+        self.logger.debug("Sending actions: %s", click_coords)
         self.dones = self.game.step(tuple(click_coords))
         rewards = [0] * self.n_agents
 
