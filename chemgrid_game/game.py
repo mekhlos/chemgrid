@@ -30,14 +30,14 @@ class Game:
     def shape(self):
         return self.frontend.screen.get_height(), self.frontend.screen.get_width()
 
-    def step_agent(self, agent_id: int, p1: int, p2: int) -> Action:
+    def _step_agent(self, agent_id: int, p1: int, p2: int) -> Action:
         self.frontend.update_game(self.game_states[agent_id])
         action = self.frontend.step((p2, p1))
         self.frontend.update_game(self.game_states[agent_id])
         return action
 
     def step(self, coords: Tuple[np.ndarray]):
-        actions = [self.step_agent(i, p1, p2) for i, (p1, p2) in enumerate(coords)]
+        actions = [self._step_agent(i, p1, p2) for i, (p1, p2) in enumerate(coords)]
         new_states, dones = self.backend.step(tuple(actions))
         for i, (new_state, done) in enumerate(zip(new_states, dones)):
             self.game_states[i].agent_state = new_state
@@ -45,7 +45,7 @@ class Game:
 
         return dones
 
-    def get_agent_click(self, agent_id: int) -> np.ndarray:
+    def _get_agent_click(self, agent_id: int) -> np.ndarray:
         self.frontend.update_game(self.game_states[agent_id])
         self.frontend.render()
 
@@ -67,7 +67,7 @@ class Game:
     def get_clicks(self) -> Tuple[np.ndarray]:
         coords = []
         for agent_id in range(self.backend.n_agents):
-            coords.append(self.get_agent_click(agent_id))
+            coords.append(self._get_agent_click(agent_id))
 
         return tuple(coords)
 
@@ -82,9 +82,7 @@ class Game:
             game_state.reset()
             game_state.agent_state = agent_state
 
-        return self.to_img_array()
-
-    def to_img_array(self):
+    def _to_img_array(self):
         return self.frontend.to_img_array()
 
     def get_observation(self) -> Tuple[np.ndarray]:

@@ -1,6 +1,13 @@
 import logging
 import sys
 
+from datetime import datetime
+
+
+def get_datetime_str() -> str:
+    str_time = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    return str_time
+
 
 def setup_logger(name, level="INFO"):
     logger = logging.getLogger(name)
