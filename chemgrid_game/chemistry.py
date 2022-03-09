@@ -115,7 +115,7 @@ class Molecule:
 
     def __repr__(self):
         h, w = self.actual_shape
-        return f"{h}x{w}-{len(self.bonds)} mol"
+        return f"{h}x{w} molecule with {len(self.bonds)} bonds"
 
     def __eq__(self, other):
         if isinstance(other, Molecule):
