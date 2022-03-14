@@ -38,12 +38,12 @@ class Game:
 
     def step(self, coords: Tuple[np.ndarray]):
         actions = [self._step_agent(i, p1, p2) for i, (p1, p2) in enumerate(coords)]
-        new_states, dones = self.backend.step(tuple(actions))
+        new_states, rewards, dones, infos = self.backend.step(tuple(actions))
         for i, (new_state, done) in enumerate(zip(new_states, dones)):
             self.game_states[i].agent_state = new_state
             self.game_states[i].done = done
 
-        return dones
+        return rewards, dones
 
     def _get_agent_click(self, agent_id: int) -> np.ndarray:
         self.frontend.update_game(self.game_states[agent_id])

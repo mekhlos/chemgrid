@@ -7,6 +7,8 @@ from typing import Optional
 from typing import Set
 from typing import Tuple
 
+import numpy as np
+
 from chemgrid_game import chemistry
 from chemgrid_game.chemistry import Molecule
 from chemgrid_game.utils import setup_logger
@@ -43,6 +45,7 @@ class GameBackend:
         self.n_agents = len(inventories)
         self.logger = setup_logger(logging_level)
         self.contract_queue = deque()
+        self.reached_target = [False] * self.n_agents
 
     def create_archive(self):
         self.archive.clear()
@@ -80,8 +83,15 @@ class GameBackend:
     def get_states(self) -> Tuple[State]:
         return tuple([self._get_state(i) for i in range(self.n_agents)])
 
+    def _get_reached_target(self, agent_id: int) -> bool:
+        self.reached_target[agent_id] = self.targets[agent_id] in self.inventories[agent_id]
+        return self.reached_target[agent_id]
+
+    def get_reached_target(self) -> List[bool]:
+        return [self._get_reached_target(i) for i in range(self.n_agents)]
+
     def _is_done(self, agent_id: int) -> bool:
-        return self.targets[agent_id] in self.inventories[agent_id]
+        return False
 
     def is_done(self) -> List[bool]:
         return [self._is_done(i) for i in range(self.n_agents)]
@@ -138,11 +148,15 @@ class GameBackend:
         else:
             raise ValueError(f"Unknown op {action.op}")
 
-    def step(self, actions: Tuple[Action]):
+    def step(self, actions: Tuple[Action]) -> Tuple[Tuple[State], List[float], List[bool], Dict]:
         [self._step_one(a_id, action) for a_id, action in enumerate(actions)]
         self.check_contracts()
+        old_reached_target = np.array(self.reached_target, dtype=float)
+        new_reached_target = np.array(self.get_reached_target(), dtype=float)
 
-        return self.get_states(), self.is_done()
+        rewards = (new_reached_target - old_reached_target).tolist()
+
+        return self.get_states(), rewards, self.is_done(), {}
 
     def reset(self) -> Tuple[State]:
         self.create_archive()
@@ -150,5 +164,6 @@ class GameBackend:
         self.contracts.clear()
         self.contracts.union(self.initial_contracts)
         self.contract_queue.clear()
+        self.reached_target = [False] * self.n_agents
 
         return self.get_states()

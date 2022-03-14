@@ -50,8 +50,7 @@ class ChemGridEnv(gym.Env):
             click_coords = np.stack(np.unravel_index(action, (self.height, self.width))).T
 
         self.logger.debug("Sending actions: %s", click_coords)
-        self.dones = self.game.step(tuple(click_coords))
-        rewards = [0] * self.n_agents
+        rewards, self.dones = self.game.step(tuple(click_coords))
 
         return self.get_observation(), tuple(rewards), tuple(self.dones), tuple(infos)
 
