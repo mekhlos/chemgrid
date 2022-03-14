@@ -22,13 +22,14 @@ class Menu(enum.Enum):
     BREAK = 2
     CREATE_CONTRACT = 3
     VIEW_CONTRACTS = 4
+    VIEW_AGENT_STATES = 5
 
 
 @dataclass
 class GameState:
     agent_id: int
     mol_archive: Archive
-    agent_state: State
+    agent_states: List[State]
     config: Config
     selected_molecules: List[Optional[int]] = field(default_factory=list)
     join_positions: List[Optional[Tuple[int, int]]] = field(default_factory=list)
@@ -38,6 +39,8 @@ class GameState:
     accept: Optional[bool] = None
     constructing: Optional[bool] = None
     inventory_start: Optional[int] = None
+    inventory_starts: Optional[List[int]] = None
+    states_start: Optional[int] = None
     combo_candidate: Optional[Molecule] = None
     selected_edge: Optional[np.ndarray] = None
     draw_color: Optional[Tuple[int, int, int]] = None
@@ -45,6 +48,8 @@ class GameState:
 
     def __post_init__(self):
         self.logger = setup_logger(self.__class__.__name__, self.config.logging_level)
+        self.agent_state = self.agent_states[self.agent_id]
+        self.n_agents = len(self.agent_states)
 
     @property
     def inventory(self) -> List[Molecule]:
@@ -64,6 +69,9 @@ class GameState:
             contract_mols.append((self.mol_archive[offer], self.mol_archive[ask]))
 
         return contract_mols
+
+    def get_other_agent_states(self) -> List[State]:
+        return [self.agent_states[i] for i in range(len(self.agent_states)) if i != self.agent_id]
 
     def get_selected_mols(self) -> List[Optional[Molecule]]:
         return [self.get_mol(m_id) if m_id is not None else None for m_id in self.selected_molecules]
@@ -86,6 +94,8 @@ class GameState:
         self.accept = False
         self.constructing = False
         self.inventory_start = 0
+        self.inventory_starts = [0] * (self.n_agents - 1)
+        self.states_start = 0
         self.combo_candidate = None
         self.selected_edge = None
         self.draw_color = None
@@ -100,6 +110,8 @@ class GameState:
         self.accept = False
         self.constructing = False
         self.inventory_start = 0
+        self.inventory_starts = [0] * (self.n_agents - 1)
+        self.states_start = 0
         self.combo_candidate = None
         self.selected_edge = None
         self.draw_color = None

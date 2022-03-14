@@ -75,7 +75,7 @@ class Game:
         states = self.backend.reset()
         if self.game_states is None:
             self.game_states = [
-                GameState(i, self.backend.archive, state, self.config) for i, state in enumerate(states)
+                GameState(i, self.backend.archive, states, self.config) for i in range(len(states))
             ]
 
         for game_state, agent_state in zip(self.game_states, states):
