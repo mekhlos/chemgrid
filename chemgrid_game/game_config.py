@@ -82,6 +82,8 @@ SURVIVAL_MOL = Molecule(np.array([
 
 @dataclass
 class Config:
+    screen_height: int = 256
+    screen_width: int = 256
     scale: float = 1
     input_mode: str = "ai"
     pixel_size: int = 4
@@ -105,11 +107,14 @@ class Config:
     atom_colors = [WHITE, RED, GREEN, BLUE]
     enable_create_contract: bool = True
     enable_view_contracts: bool = True
+    enable_view_agent_states: bool = False
     initial_inventories: Tuple[List[Molecule]] = ([DEMO_MOLECULE3],)
     initial_contracts: Set[Contract] = field(default_factory=set)
     survival_mols: Tuple[Molecule] = (SURVIVAL_MOL,)
 
     def __post_init__(self):
+        self.screen_width *= self.scale
+        self.screen_height *= self.scale
         self.pixel_size *= self.scale
         self.pixel_pad *= self.scale
         self.button_width *= self.scale
@@ -132,6 +137,7 @@ class Config:
             "break_button": {"x": 80, "y": 220, "w": 20, "h": 10, "img": "break_small.png"},
             "create_contract_button": {"x": 50, "y": 235, "w": 20, "h": 10, "img": "contract_small.png"},
             "view_contracts_button": {"x": 80, "y": 235, "w": 20, "h": 10, "img": "contract_small_2.png"},
+            "view_states_button": {"x": 110, "y": 235, "w": 20, "h": 10, "img": "view_states.png"},
             "accept_button": {"x": 135, "y": 220, "w": 20, "h": 20, "img": "accept.png"},
             "cancel_button": {"x": 160, "y": 220, "w": 20, "h": 20, "img": "cancel.png"},
             "up_arrow": {"x": 208, "y": 1, "w": 20, "h": 13, "img": "up_triangle.png"},
@@ -140,6 +146,7 @@ class Config:
             "right_arrow": {"x": 190, "y": 100, "w": 20, "h": 20, "img": "right_triangle.png"},
             "white_arrow": {"x": 100, "y": 35, "w": 20, "h": 20, "img": "right_triangle_white.png"},
             "contract_viewer": {"x": 30, "y": 20, "w": 160, "h": 160},
+            "agent_state_viewer": {"x": 10, "y": 20, "w": 236, "h": 160},
         }
 
         scaled_locations = {
