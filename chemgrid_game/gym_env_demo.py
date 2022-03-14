@@ -23,8 +23,8 @@ if __name__ == '__main__':
     env = gym.make(env_id, **kwargs)
 
     obs = env.reset()
-    for i in tqdm(range(1000)):
+    for i in tqdm(range(100)):
         action = env.action_space.sample()
         new_obs, rewards, dones, infos = env.step(action)
-        if all(dones):
-            break
+
+    env.close()

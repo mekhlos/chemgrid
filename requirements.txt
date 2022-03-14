@@ -1,5 +1,5 @@
 pygame
-gym
+gym>=0.22.0
 matplotlib
 seaborn
 tqdm
