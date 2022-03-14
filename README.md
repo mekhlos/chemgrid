@@ -1,4 +1,5 @@
 # ChemGrid 2022
+![ChemGrid GIF](./chemgrid_example1.gif) 
 
 ## Install
 
