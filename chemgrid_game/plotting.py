@@ -80,8 +80,11 @@ def plot_atoms_list(
     for i, ax in enumerate(axs):
         if i < len(data):
             plot_atoms(data[i], scale, ax=ax, background=background)
-        if i < len(titles):
-            ax.set_title(titles[i])
+            if i < len(titles):
+                ax.set_title(titles[i])
+        else:
+            ax.axis("off")
+
 
     if title:
         fig.suptitle(title)

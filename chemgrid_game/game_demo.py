@@ -20,7 +20,7 @@ if __name__ == '__main__':
     config = Config(
         initial_inventories=tuple(inventories),
         survival_mols=tuple(targets),
-        logging_level="DEBUG",
+        logging_level="INFO",
         scale=2
     )
     frontend = GameFrontend(config)

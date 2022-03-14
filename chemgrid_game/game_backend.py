@@ -63,12 +63,12 @@ class GameBackend:
             for other_agent_id, offer_id, ask_id in self.contracts:
                 other_inventory = self.inventories[other_agent_id]
                 if ask_id == mol_id and offer_id in other_inventory:
-                    self.add_mol(agent_id, mol_id=offer_id)
-                    self.add_mol(other_agent_id, mol_id=ask_id)
+                    self.add_mol(agent_id, mol_id=offer_id, parent_op="contract", parent_ids=(ask_id,))
+                    self.add_mol(other_agent_id, mol_id=ask_id, parent_op="contract", parent_ids=(offer_id,))
 
                 if offer_id == mol_id and ask_id in other_inventory:
-                    self.add_mol(agent_id, mol_id=ask_id)
-                    self.add_mol(other_agent_id, mol_id=offer_id)
+                    self.add_mol(agent_id, mol_id=ask_id, parent_op="contract", parent_ids=(offer_id,))
+                    self.add_mol(other_agent_id, mol_id=offer_id, parent_op="contract", parent_ids=(ask_id,))
 
     def _get_state(self, agent_id: int) -> State:
         inventories = copy.deepcopy(self.inventories[agent_id])
@@ -101,25 +101,31 @@ class GameBackend:
             self.inventories[agent_id].append(mol_id)
             self.contract_queue.append((agent_id, mol_id))
 
+    def process_join_action(self, agent_id: int, action: Action) -> List[Molecule]:
+        mol1_id, mol2_id = action.operands
+        mol1, mol2 = self.archive[mol1_id], self.archive[mol2_id]
+        row_offset, col_offset = action.params
+        new_mols = chemistry.join_mols(mol1, mol2, row_offset, col_offset)
+        return new_mols
+
+    def process_break_action(self, agent_id: int, action: Action) -> List[Molecule]:
+        mol_id, = action.operands
+        mol = self.archive[mol_id]
+        edge = action.params
+        new_mols = chemistry.break_mol(mol, edge)
+        return new_mols
+
     def _step_one(self, agent_id: int, action: Action):
         self.logger.debug("Action: %s" % action.op)
         if action.op == "join":
-            mol1_id, mol2_id = action.operands
-            assert mol1_id in self.inventories[agent_id] and mol2_id in self.inventories[agent_id]
-            mol1, mol2 = self.archive[mol1_id], self.archive[mol2_id]
-            row_offset, col_offset = action.params
-            new_mols = chemistry.join_mols(mol1, mol2, row_offset, col_offset)
+            new_mols = self.process_join_action(agent_id, action)
             for new_mol in new_mols:
-                self.add_mol(agent_id, new_mol)
+                self.add_mol(agent_id, new_mol, parent_op=action.op, parent_ids=action.operands)
 
         elif action.op == "break":
-            mol_id, = action.operands
-            assert mol_id in self.inventories[agent_id]
-            mol = self.archive[mol_id]
-            edge = action.params
-            new_mols = chemistry.break_mol(mol, edge)
+            new_mols = self.process_break_action(agent_id, action)
             for new_mol in new_mols:
-                self.add_mol(agent_id, new_mol)
+                self.add_mol(agent_id, new_mol, parent_op=action.op, parent_ids=action.operands)
 
         elif action.op == "contract":
             offer, ask = action.operands
