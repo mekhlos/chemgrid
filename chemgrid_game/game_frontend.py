@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Optional
 from typing import Tuple
 
 import numpy as np
@@ -86,6 +87,12 @@ class ContractViewButton(Button):
             game_state.mode = Menu.VIEW_CONTRACTS
 
 
+class AgentStateViewButton(Button):
+    def on_click(self, game_state: GameState):
+        if game_state.selected_molecules[0] is None and game_state.config.enable_view_agent_states:
+            game_state.mode = Menu.VIEW_AGENT_STATES
+
+
 class AcceptButton(Button):
 
     def on_click(self, game_state: GameState):
@@ -100,6 +107,8 @@ class AcceptButton(Button):
             game_state.mol_archive[ask] = ask_mol
             action = Action("contract", (offer, ask), ())
         elif game_state.mode == Menu.VIEW_CONTRACTS:
+            pass
+        elif game_state.mode == Menu.VIEW_AGENT_STATES:
             pass
         elif game_state.mode == Menu.JOIN:
             mol2_id = game_state.selected_molecules[1]
@@ -124,30 +133,63 @@ class CancelButton(Button):
 
 class UpArrow(Button):
     def on_click(self, game_state: GameState):
-        if game_state.inventory_start > 0:
-            game_state.inventory_start -= 1
+        if game_state.mode == Menu.VIEW_AGENT_STATES:
+            if game_state.states_start > 0:
+                game_state.states_start -= 1
+        else:
+            if game_state.inventory_start > 0:
+                game_state.inventory_start -= 1
 
 
 class DownArrow(Button):
     def on_click(self, game_state: GameState):
-        n_items = len(game_state.inventory)
-        if game_state.inventory_start < n_items - game_state.config.visible_inventory_len:
-            game_state.inventory_start += 1
+        if game_state.mode == Menu.VIEW_AGENT_STATES:
+            n_items = len(game_state.get_other_agent_states())
+            if game_state.states_start < n_items - game_state.config.visible_contract_viewer_len:
+                game_state.states_start += 1
+                game_state.inventory_starts = [0] * (game_state.n_agents - 1)
+
+        else:
+            n_items = len(game_state.inventory)
+            if game_state.inventory_start < n_items - game_state.config.visible_inventory_len:
+                game_state.inventory_start += 1
 
 
 class LeftArrow(Button):
+    def __init__(self, x, y, w, h, img_path: str, list_item_id: Optional[int] = None):
+        super().__init__(x, y, w, h, img_path)
+        self.list_item_id = list_item_id
+
     def on_click(self, game_state: GameState):
         if game_state.mode == Menu.VIEW_CONTRACTS:
             if game_state.contracts_start > 0:
                 game_state.contracts_start -= 1
+                game_state.inventory_starts = [0] * (game_state.n_agents - 1)
+
+        elif game_state.mode == Menu.VIEW_AGENT_STATES:
+            inventory_starts = game_state.inventory_starts
+            if inventory_starts[self.list_item_id] > 0:
+                inventory_starts[self.list_item_id] -= 1
 
 
 class RightArrow(Button):
+    def __init__(self, x, y, w, h, img_path: str, list_item_id: Optional[int] = None):
+        super().__init__(x, y, w, h, img_path)
+        self.list_item_id = list_item_id
+
     def on_click(self, game_state: GameState):
         if game_state.mode == Menu.VIEW_CONTRACTS:
             n_items = len(game_state.contracts)
             if game_state.contracts_start < n_items - game_state.config.visible_contract_viewer_len:
                 game_state.contracts_start += 1
+
+        elif game_state.mode == Menu.VIEW_AGENT_STATES:
+            inventory_starts = game_state.inventory_starts
+            inventory, target, _ = game_state.get_other_agent_states()[self.list_item_id]
+            n_items = len(inventory)
+
+            if inventory_starts[self.list_item_id] < n_items - game_state.config.visible_contract_viewer_len:
+                inventory_starts[self.list_item_id] += 1
 
 
 class WhiteArrow(Button):
@@ -428,7 +470,7 @@ class ContractViewer(ClickySpriteWithImg):
         scale = game_state.config.scale
         for i, contract in enumerate(contracts):
             y = i * 50 * scale
-            pygame.draw.rect(self.image, WHITE, rect=(0 * scale, y, 150 * scale, 50 * scale), width=3 * scale)
+            pygame.draw.rect(self.image, WHITE, rect=(0 * scale, y, 150 * scale, 50 * scale), width=int(3 * scale))
             mol = TinyMolecule(20 * scale, y + 5 * scale, w_tiny_mol, h_tiny_mol, molecule=contract[1])
             mol.update(game_state)
             self.image.blit(mol.image, mol.rect)
@@ -437,6 +479,123 @@ class ContractViewer(ClickySpriteWithImg):
             mol = TinyMolecule(95 * scale, y + 5 * scale, w_tiny_mol, h_tiny_mol, contract[0])
             mol.update(game_state)
             self.image.blit(mol.image, mol.rect)
+
+
+class AgentStateWithArrows(ClickySpriteWithImg):
+    def __init__(self, x, y, w, h, list_item_id: Optional[int] = None):
+        super().__init__(x, y, w, h)
+        self.items = []
+        self.list_item_id = list_item_id
+
+    def create_molecules(self, game_state: GameState, x_start, y, w, h):
+        conf = game_state.config
+        states = game_state.get_other_agent_states()
+        offset = game_state.states_start
+        states = states[offset: offset + conf.visible_contract_viewer_len]
+        inventory, target, _ = states[self.list_item_id]
+        offset = game_state.inventory_starts[self.list_item_id]
+        mol_ids = inventory[offset:offset + conf.visible_contract_viewer_len]
+
+        game_state.logger.debug(f"Drawing items {len(mol_ids)}")
+        for i, mol_id in enumerate(mol_ids):
+            mol = game_state.mol_archive[mol_id]
+            x = x_start + i * (w + conf.margin)
+            game_mol = TinyMolecule(x, y, w, h, molecule=mol, is_selected=False)
+            self.items.append(game_mol)
+
+    def create_left_arrow(self, x, y, w, h, img_path):
+        left_arrow = LeftArrow(x, y, w, h, img_path, self.list_item_id)
+        self.items.append(left_arrow)
+
+    def create_right_arrow(self, x, y, w, h, img_path):
+        right_arrow = RightArrow(x, y, w, h, img_path, self.list_item_id)
+        self.items.append(right_arrow)
+
+    def create_survival_mol(self, game_state: GameState, x, y, w, h):
+        inventory, target, _ = game_state.get_other_agent_states()[self.list_item_id]
+        mol = game_state.mol_archive[target]
+        game_mol = TinyMolecule(x, y, w, h, molecule=mol, is_selected=False)
+        self.items.append(game_mol)
+
+    def update(self, game_state: GameState):
+        self.items.clear()
+
+        locs = game_state.config.get_locations()
+        left_arrow_info = locs["left_arrow"]
+        right_arrow_info = locs["right_arrow"]
+        h_arrow, w_arrow = left_arrow_info["h"], left_arrow_info["w"]
+        w_mol = h_mol = game_state.config.get_tiny_mol_size()
+
+        conf = game_state.config
+        margin = conf.margin
+        left_arrow_start_x = margin
+        left_arrow_start_y = margin
+        right_arrow_start_x = self.image.get_width() - margin - w_arrow
+        right_arrow_start_y = margin
+
+        frame_thickness = int(2 * conf.scale)
+
+        frame_start_x = left_arrow_start_x + w_arrow + margin
+        frame_start_y = 0
+        target_start_x = frame_start_x + frame_thickness + 1
+        inv_start_x = target_start_x + w_mol + margin
+        w_frame1 = 2 * (frame_thickness + 1) + w_mol
+        w_frame2 = w_frame1 + (w_mol + margin) * conf.visible_contract_viewer_len
+        h_frame = 2 * (frame_thickness + 1) + h_mol
+
+        self.create_left_arrow(left_arrow_start_x, left_arrow_start_y, w_arrow, h_arrow, left_arrow_info["img_path"])
+        self.create_right_arrow(
+            right_arrow_start_x, right_arrow_start_y, w_arrow, h_arrow, right_arrow_info["img_path"])
+        self.create_survival_mol(game_state, target_start_x, frame_thickness + 1, w_mol, h_mol)
+        self.create_molecules(game_state, inv_start_x, frame_thickness + 1, w_mol, h_mol)
+        self.image.fill(BLACK)
+        mols = pygame.sprite.Group(*self.items)
+        mols.update(game_state)
+        mols.draw(self.image)
+
+        pygame.draw.rect(
+            self.image, WHITE, rect=(frame_start_x, frame_start_y, w_frame1, h_frame), width=frame_thickness)
+        pygame.draw.rect(
+            self.image, WHITE, rect=(frame_start_x, frame_start_y, w_frame2, h_frame), width=frame_thickness)
+
+    def check_click(self, pos: Tuple[int, int], game_state: GameState):
+        if self.is_clicked(pos):
+            x, y = pos
+            x -= self.rect.x
+            y -= self.rect.y
+            for item in self.items:
+                item.check_click((x, y), game_state)
+
+
+class AgentStateViewer(ClickySpriteWithImg):
+    def __init__(self, x, y, w, h):
+        super().__init__(x, y, w, h)
+        self.items = []
+
+    def update(self, game_state: GameState) -> None:
+        self.items.clear()
+        other_agent_states = game_state.get_other_agent_states()
+        offset = game_state.states_start
+        other_agent_states = other_agent_states[offset:offset + game_state.config.visible_contract_viewer_len]
+        h_tiny_mol = game_state.config.get_tiny_mol_size()
+        frame_thickness = int(2 * game_state.config.scale)
+        h_frame = h_tiny_mol + 2 * (frame_thickness + 1)
+
+        for i, (inventory_ids, target_id, _) in enumerate(other_agent_states):
+            y = i * h_frame + game_state.config.margin
+            item = AgentStateWithArrows(0, y, self.image.get_width(), h_frame, i)
+            self.image.blit(item.image, item.rect)
+            item.update(game_state)
+            item.draw(self.image)
+            self.items.append(item)
+
+    def check_click(self, pos: Tuple[int, int], game_state: GameState):
+        if self.is_clicked(pos):
+            x, y = pos
+            x -= self.rect.x
+            y -= self.rect.y
+            for item in self.items:
+                item.check_click((x, y), game_state)
 
 
 class Inventory(ClickySpriteWithImg):
@@ -493,7 +652,7 @@ class GameFrontend:
 
         self.config = config
 
-        size = (256 * config.scale, 256 * config.scale)
+        size = (config.screen_width, config.screen_height)
         self.screen = pygame.display.set_mode(size)
         self.clock = pygame.time.Clock()
 
@@ -503,6 +662,7 @@ class GameFrontend:
         self.break_button = BreakButton(**locs["break_button"])
         self.create_contract_button = ContractCreateButton(**locs["create_contract_button"])
         self.view_contracts_button = ContractViewButton(**locs["view_contracts_button"])
+        self.view_states_button = AgentStateViewButton(**locs["view_states_button"])
         self.accept_button = AcceptButton(**locs["accept_button"])
         self.cancel_button = CancelButton(**locs["cancel_button"])
         self.up_arrow = UpArrow(**locs["up_arrow"])
@@ -513,6 +673,7 @@ class GameFrontend:
         self.inventory = Inventory(**locs["inventory"])
         self.color_picker = ColorPickerBar(**locs["color_picker"])
         self.contract_viewer = ContractViewer(**locs["contract_viewer"])
+        self.agent_state_viewer = AgentStateViewer(**locs["agent_state_viewer"])
         self.survival_mol = None
         self.active_group = pygame.sprite.Group()
 
@@ -532,6 +693,9 @@ class GameFrontend:
             self.down_arrow,
             self.survival_mol
         )
+
+        if self.config.enable_view_agent_states:
+            self.active_group.add(self.view_states_button)
 
         self.inventory.create_molecules(self.game_state)
 
@@ -641,6 +805,17 @@ class GameFrontend:
             self.cancel_button
         )
 
+    def view_agent_states_mode(self):
+        self.logger.debug("view agent states mode")
+        self.active_group.empty()
+        self.active_group.add(
+            self.view_states_button,
+            self.agent_state_viewer,
+            self.cancel_button,
+            self.up_arrow,
+            self.down_arrow
+        )
+
     def draw(self, screen):
         screen.fill(BLACK)
         self.active_group.update(self.game_state)
@@ -680,6 +855,8 @@ class GameFrontend:
             self.create_contract_mode()
         elif self.game_state.mode == Menu.VIEW_CONTRACTS:
             self.view_contract_mode()
+        elif self.game_state.mode == Menu.VIEW_AGENT_STATES:
+            self.view_agent_states_mode()
 
         if self.game_state.accept:
             self.active_group.add(self.accept_button)
