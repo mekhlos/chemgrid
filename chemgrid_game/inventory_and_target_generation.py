@@ -8,7 +8,6 @@ import numpy as np
 from chemgrid_game import chemistry
 from chemgrid_game.chemistry import Molecule
 from chemgrid_game.chemistry import RandomMolGenerator
-from chemgrid_game.plotting import plot_mols
 
 
 class TargetGeneratorBase(abc.ABC):
@@ -115,24 +114,3 @@ class RandomTargetGenerator(TargetGeneratorBase):
             self._target = self._mol_generator(self.min_atoms, self.max_atoms)
 
         return self._target
-
-
-if __name__ == '__main__':
-    rng = np.random.default_rng(seed=0)
-    g1 = RandomInventoryGenerator(
-        grid_size=5,
-        min_atoms=1,
-        max_atoms=4,
-        min_length=3,
-        max_length=6,
-        n_colors=3,
-        rng=rng,
-        regenerate=True
-    )
-
-    g2 = RandomTargetGenerator(grid_size=5, min_atoms=4, max_atoms=10, n_colors=3, regenerate=True, rng=rng)
-    g3 = BasicInventoryGenerator(grid_size=5, n_colors=3)
-    for i in range(3):
-        inv = g3()
-        target = g2()
-        fig, ax = plot_mols(inv + [target], m=1, n=len(inv) + 1)
