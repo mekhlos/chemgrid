@@ -11,6 +11,8 @@ import numpy as np
 
 from chemgrid_game import chemistry
 from chemgrid_game.chemistry import Molecule
+from chemgrid_game.inventory_and_target_generation import CustomInventoryGenerator
+from chemgrid_game.inventory_and_target_generation import CustomTargetGenerator
 from chemgrid_game.utils import setup_logger
 
 
@@ -30,31 +32,34 @@ State = Tuple[Inventory, int, Set[Contract]]
 class GameBackend:
     def __init__(
             self,
-            inventories: Tuple[List[Molecule]],
-            targets: Tuple[Molecule],
-            contracts: Set[Contract],
-            logging_level: str = "INFO"
+            inventories: Tuple[List[Molecule]] = None,
+            targets: Tuple[Molecule] = None,
+            contracts: Set[Contract] = None,
+            logging_level: str = "INFO",
+            inventory_generators=None,
+            target_generators=None
     ):
-        self.initial_inventories = inventories
+        if contracts is None:
+            contracts = set()
+
+        if target_generators is None:
+            target_generators = [CustomTargetGenerator(t) for t in targets]
+
+        if inventory_generators is None:
+            inventory_generators = [CustomInventoryGenerator(inv) for inv in inventories]
+
+        self.target_generators = target_generators
+        self.inventory_generators = inventory_generators
+
         self.archive: Archive = {}
         self.inventories: Optional[Tuple[Inventory]] = None
-        self.initial_targets = targets
-        self.targets = [hash(t) for t in targets]
+        self.targets: Optional[Tuple[int]] = None
         self.initial_contracts = tuple(contracts)
         self.contracts = contracts
-        self.n_agents = len(inventories)
+        self.n_agents = len(inventory_generators)
         self.logger = setup_logger(logging_level)
         self.contract_queue = deque()
         self.reached_target = [False] * self.n_agents
-
-    def create_archive(self):
-        self.archive.clear()
-        for inventory in self.initial_inventories:
-            for mol in inventory:
-                self.archive[hash(mol)] = mol
-
-        for mol in self.initial_targets:
-            self.archive[hash(mol)] = mol
 
     def check_contracts(self):
         for agent_id in range(self.n_agents):
@@ -62,7 +67,6 @@ class GameBackend:
 
         while len(self.contract_queue) > 0:
             agent_id, mol_id = self.contract_queue.popleft()
-            inventory = self.inventories[agent_id]
             for other_agent_id, offer_id, ask_id in self.contracts:
                 other_inventory = self.inventories[other_agent_id]
                 if ask_id == mol_id and offer_id in other_inventory:
@@ -159,11 +163,24 @@ class GameBackend:
         return self.get_states(), rewards, self.is_done(), {}
 
     def reset(self) -> Tuple[State]:
-        self.create_archive()
-        self.inventories = [[hash(m) for m in mols] for mols in self.initial_inventories]
+        self.archive.clear()
         self.contracts.clear()
-        self.contracts.union(self.initial_contracts)
         self.contract_queue.clear()
+
+        inventories = [g() for g in self.inventory_generators]
+        targets = [g() for g in self.target_generators]
+
+        self.inventories = [[hash(m) for m in mols] for mols in inventories]
+        self.targets = [hash(m) for m in targets]
+
+        for inventory in inventories:
+            for mol in inventory:
+                self.archive[hash(mol)] = mol
+
+        for mol in targets:
+            self.archive[hash(mol)] = mol
+
+        self.contracts.union(self.initial_contracts)
         self.reached_target = [False] * self.n_agents
 
         return self.get_states()

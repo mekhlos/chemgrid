@@ -2,6 +2,7 @@ from typing import Tuple
 
 import gym
 import numpy as np
+
 from chemgrid_game.game import Game
 from chemgrid_game.game_backend import GameBackend
 from chemgrid_game.game_config import Config
@@ -17,9 +18,11 @@ class ChemGridEnv(gym.Env):
         self.continuous_actions = continuous_actions
         frontend = GameFrontend(config)
         backend = GameBackend(
-            config.initial_inventories,
-            config.survival_mols,
-            config.initial_contracts,
+            inventories=config.initial_inventories,
+            targets=config.initial_targets,
+            contracts=config.initial_contracts,
+            inventory_generators=config.inventory_generators,
+            target_generators=config.target_generators,
             logging_level=config.logging_level
         )
         self.game = Game(frontend, backend, config)

@@ -82,9 +82,6 @@ class Game:
             game_state.reset()
             game_state.agent_state = agent_state
 
-    def _to_img_array(self):
-        return self.frontend.to_img_array()
-
     def get_observation(self) -> Tuple[np.ndarray]:
         obs = []
         for game_state in self.game_states:
