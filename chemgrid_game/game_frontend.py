@@ -844,7 +844,6 @@ class GameFrontend:
         )
 
         self.logger.debug(self.game_state.mode)
-        # self.logger.debug(self.active_group)
         if self.game_state.mode == Menu.MAIN:
             self.menu_mode()
         elif self.game_state.mode == Menu.BREAK:
@@ -861,9 +860,6 @@ class GameFrontend:
         if self.game_state.accept:
             self.active_group.add(self.accept_button)
 
-        self.update_image()
-
-    def update_image(self):
         self.draw(self.screen)
 
     def render(self):

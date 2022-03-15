@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from dataclasses import field
 from pathlib import Path
 from typing import Any
 from typing import Dict
@@ -23,61 +22,6 @@ ORANGE = (255, 165, 0)
 PURPLE = (122, 55, 139)
 
 ZERO_MOLECULE = Molecule(np.zeros((8, 8), dtype=np.uint8))
-
-DEMO_MOLECULE1 = Molecule(np.array([
-    [1, 1, 1, 1, 1, 1, 0, 0],
-    [2, 2, 2, 0, 0, 2, 0, 0],
-    [3, 3, 3, 0, 0, 3, 0, 0],
-    [1, 1, 1, 1, 1, 1, 0, 0],
-    [2, 2, 2, 2, 2, 2, 0, 0],
-    [3, 3, 3, 3, 3, 3, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0],
-]))
-
-DEMO_MOLECULE2 = Molecule(np.array([
-    [0, 0, 3, 3, 0, 0, 0, 0],
-    [0, 0, 2, 2, 0, 0, 0, 0],
-    [0, 0, 3, 0, 0, 0, 0, 0],
-    [0, 0, 1, 1, 0, 0, 0, 0],
-    [0, 0, 2, 2, 0, 0, 0, 0],
-    [0, 0, 3, 3, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0],
-]))
-
-DEMO_MOLECULE3 = Molecule(np.array([
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 1, 2, 3, 0, 0, 0, 0],
-    [0, 0, 1, 2, 3, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0],
-]))
-
-DEMO_MOLECULE4 = Molecule(np.array([
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 2, 1, 0, 0, 0, 0],
-    [0, 2, 1, 2, 1, 0, 0, 0],
-    [0, 0, 2, 1, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0],
-]))
-
-SURVIVAL_MOL = Molecule(np.array([
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 1, 2, 3, 0, 0, 0, 0],
-    [0, 0, 1, 2, 3, 0, 0, 0],
-    [0, 0, 1, 2, 3, 0, 0, 0],
-    [0, 0, 0, 1, 2, 3, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0],
-]))
 
 
 @dataclass
@@ -108,9 +52,11 @@ class Config:
     enable_create_contract: bool = True
     enable_view_contracts: bool = True
     enable_view_agent_states: bool = False
-    initial_inventories: Tuple[List[Molecule]] = ([DEMO_MOLECULE3],)
-    initial_contracts: Set[Contract] = field(default_factory=set)
-    survival_mols: Tuple[Molecule] = (SURVIVAL_MOL,)
+    initial_inventories: Tuple[List[Molecule]] = None
+    initial_contracts: Set[Contract] = None
+    initial_targets: Tuple[Molecule] = None
+    inventory_generators: Optional[List] = None
+    target_generators: Optional[List] = None
 
     def __post_init__(self):
         self.screen_width *= self.scale
