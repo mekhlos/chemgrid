@@ -5,9 +5,9 @@ from typing import Optional
 
 import numpy as np
 
-from chemgrid_game import chemistry
-from chemgrid_game.chemistry import Molecule
-from chemgrid_game.chemistry import RandomMolGenerator
+from chemgrid_game.chemistry.molecule import Molecule
+from chemgrid_game.chemistry.utils import RandomMolGenerator
+from chemgrid_game.chemistry.utils import create_unit_mol
 
 
 class TargetGeneratorBase(abc.ABC):
@@ -38,7 +38,7 @@ class CustomInventoryGenerator(InventoryGeneratorBase):
 
 class BasicInventoryGenerator(InventoryGeneratorBase):
     def __init__(self, grid_size: int, n_colors: int = 1):
-        self._inventory = [chemistry.create_unit_mol(i + 1, grid_size=grid_size) for i in range(n_colors)]
+        self._inventory = [create_unit_mol(i + 1, grid_size=grid_size) for i in range(n_colors)]
 
     def reset(self) -> List[Molecule]:
         return self._inventory

@@ -9,7 +9,7 @@ from typing import Tuple
 import numpy as np
 
 from chemgrid_game import game_config
-from chemgrid_game.chemistry import Molecule
+from chemgrid_game.chemistry.mol_chemistry import Molecule
 from chemgrid_game.game_backend import Archive
 from chemgrid_game.game_backend import State
 from chemgrid_game.game_config import Config

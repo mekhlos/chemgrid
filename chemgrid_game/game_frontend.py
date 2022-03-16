@@ -7,8 +7,8 @@ import pygame
 from pygame.sprite import AbstractGroup
 
 from chemgrid_game import graph_utils
-from chemgrid_game.chemistry import Molecule
-from chemgrid_game.game_backend import Action
+from chemgrid_game.chemistry.mol_chemistry import Action
+from chemgrid_game.chemistry.molecule import Molecule
 from chemgrid_game.game_config import BLACK
 from chemgrid_game.game_config import BLUE
 from chemgrid_game.game_config import Config

@@ -9,7 +9,7 @@ from typing import Tuple
 
 import numpy as np
 
-from chemgrid_game.chemistry import Molecule
+from chemgrid_game.chemistry.molecule import Molecule
 from chemgrid_game.game_backend import Contract
 
 BLACK = (0, 0, 0)

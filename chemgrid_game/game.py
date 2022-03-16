@@ -6,7 +6,7 @@ import numpy as np
 import pygame
 
 from chemgrid_game import utils
-from chemgrid_game.game_backend import Action
+from chemgrid_game.chemistry.mol_chemistry import Action
 from chemgrid_game.game_backend import GameBackend
 from chemgrid_game.game_config import Config
 from chemgrid_game.game_frontend import GameFrontend

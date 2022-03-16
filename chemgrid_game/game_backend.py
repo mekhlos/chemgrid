@@ -1,6 +1,5 @@
 import copy
 from collections import deque
-from dataclasses import dataclass
 from typing import Dict
 from typing import List
 from typing import Optional
@@ -9,19 +8,12 @@ from typing import Tuple
 
 import numpy as np
 
-from chemgrid_game import chemistry
-from chemgrid_game.chemistry import Molecule
+from chemgrid_game.chemistry import mol_chemistry
+from chemgrid_game.chemistry.mol_chemistry import Action
+from chemgrid_game.chemistry.molecule import Molecule
 from chemgrid_game.inventory_and_target_generation import CustomInventoryGenerator
 from chemgrid_game.inventory_and_target_generation import CustomTargetGenerator
 from chemgrid_game.utils import setup_logger
-
-
-@dataclass
-class Action:
-    op: str = "noop"
-    operands: Tuple = ()
-    params: Tuple = ()
-
 
 Inventory = List[int]
 Contract = Tuple[int, int, int]
@@ -119,14 +111,14 @@ class GameBackend:
         mol1_id, mol2_id = action.operands
         mol1, mol2 = self.archive[mol1_id], self.archive[mol2_id]
         row_offset, col_offset = action.params
-        new_mols = chemistry.join_mols(mol1, mol2, row_offset, col_offset)
+        new_mols = mol_chemistry.join_mols(mol1, mol2, row_offset, col_offset)
         return new_mols
 
     def process_break_action(self, agent_id: int, action: Action) -> List[Molecule]:
         mol_id, = action.operands
         mol = self.archive[mol_id]
         edge = action.params
-        new_mols = chemistry.break_mol(mol, edge)
+        new_mols = mol_chemistry.break_mol(mol, edge)
         return new_mols
 
     def _step_one(self, agent_id: int, action: Action):
