@@ -89,13 +89,13 @@ class Molecule:
         return atoms
 
     def get_img_path(self) -> Path:
-        p = CHEMGRID_GAME_PATH.joinpath(f"mol_imgs/{hash(self)}.png")
+        p = CHEMGRID_GAME_PATH.joinpath(f"files/mol_imgs/{hash(self)}.png")
         if not p.parent.is_dir():
             p.parent.mkdir(exist_ok=True)
         return p
 
     def get_mol_path(self) -> str:
-        p = CHEMGRID_GAME_PATH.joinpath(f"mols/{hash(self)}.json")
+        p = CHEMGRID_GAME_PATH.joinpath(f"files/mols/{hash(self)}.json")
 
         if not p.parent.is_dir():
             p.parent.mkdir(exist_ok=True)
