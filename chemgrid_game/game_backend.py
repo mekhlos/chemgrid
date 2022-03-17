@@ -8,16 +8,16 @@ from typing import Tuple
 
 import numpy as np
 
-from chemgrid_game.chemistry import mol_chemistry
 from chemgrid_game.chemistry.mol_chemistry import Action
+from chemgrid_game.chemistry.mol_chemistry import ChemistryWrapper
 from chemgrid_game.chemistry.molecule import Molecule
 from chemgrid_game.inventory_and_target_generation import CustomInventoryGenerator
 from chemgrid_game.inventory_and_target_generation import CustomTargetGenerator
+from chemgrid_game.mol_archive import MolArchive
 from chemgrid_game.utils import setup_logger
 
 Inventory = List[int]
 Contract = Tuple[int, int, int]
-Archive = Dict[int, Molecule]
 State = Tuple[Inventory, int, Set[Contract]]
 
 
@@ -27,9 +27,11 @@ class GameBackend:
             inventories: Tuple[List[Molecule]] = None,
             targets: Tuple[Molecule] = None,
             contracts: Set[Contract] = None,
+            archive: MolArchive = None,
             logging_level: str = "INFO",
             inventory_generators=None,
-            target_generators=None
+            target_generators=None,
+
     ):
         if contracts is None:
             contracts = set()
@@ -42,8 +44,9 @@ class GameBackend:
 
         self.target_generators = target_generators
         self.inventory_generators = inventory_generators
-
-        self.archive: Archive = {}
+        if archive is None:
+            archive = MolArchive()
+        self.archive = archive
         self.inventories: Optional[Tuple[Inventory]] = None
         self.targets: Optional[Tuple[int]] = None
         self.initial_contracts = tuple(contracts)
@@ -52,6 +55,7 @@ class GameBackend:
         self.logger = setup_logger(logging_level)
         self.contract_queue = deque()
         self.reached_target = [False] * self.n_agents
+        self.chemistry = ChemistryWrapper()
 
     def check_contracts(self):
         for agent_id in range(self.n_agents):
@@ -107,29 +111,29 @@ class GameBackend:
             self.inventories[agent_id].append(mol_id)
             self.contract_queue.append((agent_id, mol_id))
 
-    def process_join_action(self, agent_id: int, action: Action) -> List[Molecule]:
+    def process_join_action(self, action: Action) -> List[Molecule]:
         mol1_id, mol2_id = action.operands
         mol1, mol2 = self.archive[mol1_id], self.archive[mol2_id]
-        row_offset, col_offset = action.params
-        new_mols = mol_chemistry.join_mols(mol1, mol2, row_offset, col_offset)
+        offset = action.params
+        new_mols = self.chemistry.join_mols(mol1, mol2, offset)
         return new_mols
 
-    def process_break_action(self, agent_id: int, action: Action) -> List[Molecule]:
+    def process_break_action(self, action: Action) -> List[Molecule]:
         mol_id, = action.operands
         mol = self.archive[mol_id]
-        edge = action.params
-        new_mols = mol_chemistry.break_mol(mol, edge)
+        edge = action.params or None
+        new_mols = self.chemistry.break_mol(mol, edge)
         return new_mols
 
     def _step_one(self, agent_id: int, action: Action):
         self.logger.debug("Action: %s" % action.op)
         if action.op == "join":
-            new_mols = self.process_join_action(agent_id, action)
+            new_mols = self.process_join_action(action)
             for new_mol in new_mols:
                 self.add_mol(agent_id, new_mol, parent_op=action.op, parent_ids=action.operands)
 
         elif action.op == "break":
-            new_mols = self.process_break_action(agent_id, action)
+            new_mols = self.process_break_action(action)
             for new_mol in new_mols:
                 self.add_mol(agent_id, new_mol, parent_op=action.op, parent_ids=action.operands)
 
@@ -144,18 +148,20 @@ class GameBackend:
         else:
             raise ValueError(f"Unknown op {action.op}")
 
+    def compute_rewards(self) -> List[float]:
+        old_reached_target = np.array(self.reached_target, dtype=float)
+        new_reached_target = np.array(self.get_reached_target(), dtype=float)
+        rewards = (new_reached_target - old_reached_target).tolist()
+        return rewards
+
     def step(self, actions: Tuple[Action]) -> Tuple[Tuple[State], List[float], List[bool], Dict]:
         [self._step_one(a_id, action) for a_id, action in enumerate(actions)]
         self.check_contracts()
-        old_reached_target = np.array(self.reached_target, dtype=float)
-        new_reached_target = np.array(self.get_reached_target(), dtype=float)
 
-        rewards = (new_reached_target - old_reached_target).tolist()
-
-        return self.get_states(), rewards, self.is_done(), {}
+        return self.get_states(), self.compute_rewards(), self.is_done(), {}
 
     def reset(self) -> Tuple[State]:
-        self.archive.clear()
+        self.archive.reset()
         self.contracts.clear()
         self.contract_queue.clear()
 

@@ -10,9 +10,9 @@ import numpy as np
 
 from chemgrid_game import game_config
 from chemgrid_game.chemistry.mol_chemistry import Molecule
-from chemgrid_game.game_backend import Archive
 from chemgrid_game.game_backend import State
 from chemgrid_game.game_config import Config
+from chemgrid_game.mol_archive import MolArchive
 from chemgrid_game.utils import setup_logger
 
 
@@ -28,7 +28,7 @@ class Menu(enum.Enum):
 @dataclass
 class GameState:
     agent_id: int
-    mol_archive: Archive
+    mol_archive: MolArchive
     agent_states: List[State]
     config: Config
     selected_molecules: List[Optional[int]] = field(default_factory=list)
