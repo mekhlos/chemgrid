@@ -1,3 +1,4 @@
+from typing import Dict
 from typing import List
 from typing import Optional
 
@@ -30,6 +31,9 @@ class MolArchive:
 
     def get_molecules(self) -> List[Molecule]:
         return [self[h] for h in self.hashes]
+
+    def get_dict(self, hashes: List[int]) -> Dict[int, Molecule]:
+        return {h: self[h] for h in hashes}
 
     def __setitem__(self, mol_hash: int, molecule: Molecule):
         if len(self) < self.max_len:
