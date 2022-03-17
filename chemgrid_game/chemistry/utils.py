@@ -5,10 +5,10 @@ import numpy as np
 from chemgrid_game.chemistry.molecule import Molecule
 
 
-def create_unit_mol(col_id: int, grid_size=8) -> Molecule:
-    assert 1 <= col_id <= 3
+def create_unit_mol(color_id: int, grid_size=8) -> Molecule:
+    assert 1 <= color_id <= 3
     atoms = np.zeros((grid_size, grid_size), dtype=np.uint8)
-    atoms[0, 0] = col_id
+    atoms[0, 0] = color_id
     return Molecule(atoms, grid_size=grid_size)
 
 

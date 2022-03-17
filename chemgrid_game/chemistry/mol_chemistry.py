@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Any
 from typing import Dict
 from typing import List
 from typing import Optional
@@ -16,7 +17,7 @@ class Action:
     op: str = "noop"
     operands: Tuple = ()
     params: Tuple = ()
-    res: Optional = None
+    res: Optional[Any] = None
 
     def add_res(self, res) -> "Action":
         return Action(self.op, self.operands, self.params, res)
@@ -58,7 +59,7 @@ def _join_atoms(
 
     combined = shifted1 + shifted2
 
-    if check_valid or \
+    if not check_valid or \
             graph_utils.node_sum_match_parent(combined, [atoms1, atoms2]) and graph_utils.is_connected(combined):
         return combined
 
@@ -82,7 +83,7 @@ def join_mols(mol1: Molecule, mol2: Molecule, row_offset: int, col_offset: int, 
     return res
 
 
-def find_join_offsets(mol1: Molecule, mol2: Molecule) -> List[Tuple[int, int]]:
+def find_join_offsets(mol1: Molecule, mol2: Molecule, check_valid=False) -> List[Tuple[int, int]]:
     max_size = mol1.grid_size
     offsets = []
     for r in range(-mol2.height, mol1.height + 1):
@@ -90,27 +91,18 @@ def find_join_offsets(mol1: Molecule, mol2: Molecule) -> List[Tuple[int, int]]:
             height = max(mol1.height, r + mol2.height) - min(0, r)
             width = max(mol1.width, c + mol2.width) - min(0, c)
             if height <= max_size and width <= max_size:
-                offsets.append((r, c))
+                if not check_valid or is_valid_join(mol1, mol2, (r, c)):
+                    offsets.append((r, c))
 
     return offsets
 
 
-def get_all_breaks(mol: Molecule) -> List[Molecule]:
-    res = []
-    for edge in mol.cut_edges:
-        breaks = break_mol(mol, edge)
-        res.extend(breaks)
+def is_valid_join(mol1: Molecule, mol2: Molecule, offset: Tuple[int, int]) -> bool:
+    res = join_mols(mol1, mol2, *offset)
+    for _ in res:
+        return True
 
-    return res
-
-
-def get_all_joins(mol1: Molecule, mol2: Molecule) -> List[Molecule]:
-    offsets = find_join_offsets(mol1, mol2)
-    joins = []
-    for offset in offsets:
-        joins.extend(join_mols(mol1, mol2, *offset))
-
-    return joins
+    return False
 
 
 class ChemistryWrapper:
@@ -120,11 +112,14 @@ class ChemistryWrapper:
             self._offset_dict: Dict[Tuple[int, int], List[Tuple[int, int]]] = {}
             self._cut_edge_dict: Dict[int, List[Bond]] = {}
 
-    def find_join_offsets(self, mol1: Molecule, mol2: Molecule) -> List[Tuple[int, int]]:
+    def is_valid_join(self, mol1: Molecule, mol2: Molecule, offset: Tuple[int, int]) -> bool:
+        return is_valid_join(mol1, mol2, offset)
+
+    def find_join_offsets(self, mol1: Molecule, mol2: Molecule, check_valid: bool = False) -> List[Tuple[int, int]]:
         if self.use_caching:
             k = (hash(mol1), hash(mol2))
             if k not in self._offset_dict:
-                self._offset_dict[k] = find_join_offsets(mol1, mol2)
+                self._offset_dict[k] = find_join_offsets(mol1, mol2, check_valid)
 
             return self._offset_dict[k]
 
@@ -156,10 +151,10 @@ class ChemistryWrapper:
 
         return res
 
-    def join_mols(self, mol1: Molecule, mol2: Molecule, offset=()) -> List[Molecule]:
+    def join_mols(self, mol1: Molecule, mol2: Molecule, offset=(), check_valid=True) -> List[Molecule]:
         if len(offset) == 0:
             return self._get_all_joins(mol1, mol2)
-        return join_mols(mol1, mol2, *offset)
+        return join_mols(mol1, mol2, *offset, check_valid=check_valid)
 
     def break_mol(self, mol: Molecule, edge: Bond = None) -> List[Molecule]:
         if edge is None:
@@ -172,16 +167,24 @@ class ChemistryActionProcessor:
     def __init__(self, use_caching=True):
         self.chemistry = ChemistryWrapper(use_caching=use_caching)
 
-    def get_valid_actions(self, mol1: Molecule, mol2: Optional[Molecule] = None) -> List[Action]:
+    def get_valid_actions(
+            self,
+            mol1: Molecule,
+            mol2: Optional[Molecule] = None,
+            op: Optional[str] = None
+    ) -> List[Action]:
         actions = []
-        cut_edges = self.chemistry.find_cut_edges(mol1)
-        for edge in cut_edges:
-            actions.append(Action(op="break", operands=(hash(mol1),), params=(edge,)))
+        if op == "break" or op is None:
+            cut_edges = self.chemistry.find_cut_edges(mol1)
+            for edge in cut_edges:
+                actions.append(Action(op="break", operands=(hash(mol1),), params=(edge,)))
 
-        if mol2 is not None:
-            offsets = self.chemistry.find_join_offsets(mol1, mol2)
+        if op == "join" or op is None and mol2 is not None:
+            offsets = self.chemistry.find_join_offsets(mol1, mol2, check_valid=True)
             for offset in offsets:
-                actions.append(Action(op="join", operands=(hash(mol1), hash(mol2)), params=offset))
+                hash1, hash2 = hash(mol1), hash(mol2)
+                new_mol = self.chemistry.join_mols(mol1, mol2, offset, check_valid=False)
+                actions.append(Action(op="join", operands=(hash1, hash2), params=offset, res=hash(new_mol)))
 
         return actions
 
