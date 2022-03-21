@@ -6,7 +6,6 @@ from typing import Optional
 from typing import Tuple
 
 import numpy as np
-
 from chemgrid_game import graph_utils
 from chemgrid_game.chemistry.molecule import Bond
 from chemgrid_game.chemistry.molecule import Molecule
@@ -162,29 +161,24 @@ class ChemistryWrapper:
 
         return break_mol(mol, edge)
 
-
-class ChemistryActionProcessor:
-    def __init__(self, use_caching=True):
-        self.chemistry = ChemistryWrapper(use_caching=use_caching)
-
     def get_valid_actions(
             self,
             mol1: Molecule,
             mol2: Optional[Molecule] = None,
-            op: Optional[str] = None
+            op: Optional[str] = None,
+            check_join_valid: bool = False
     ) -> List[Action]:
         actions = []
         if op == "break" or op is None:
-            cut_edges = self.chemistry.find_cut_edges(mol1)
+            cut_edges = self.find_cut_edges(mol1)
             for edge in cut_edges:
-                actions.append(Action(op="break", operands=(hash(mol1),), params=(edge,)))
+                actions.append(Action(op="break", operands=(hash(mol1),), params=edge))
 
-        if op == "join" or op is None and mol2 is not None:
-            offsets = self.chemistry.find_join_offsets(mol1, mol2, check_valid=True)
+        if mol2 is not None and (op == "join" or op is None):
+            offsets = self.find_join_offsets(mol1, mol2, check_valid=check_join_valid)
             for offset in offsets:
                 hash1, hash2 = hash(mol1), hash(mol2)
-                new_mol = self.chemistry.join_mols(mol1, mol2, offset, check_valid=False)
-                actions.append(Action(op="join", operands=(hash1, hash2), params=offset, res=hash(new_mol)))
+                actions.append(Action(op="join", operands=(hash1, hash2), params=offset))
 
         return actions
 
