@@ -6,6 +6,7 @@ from typing import Optional
 from typing import Tuple
 
 import numpy as np
+
 from chemgrid_game import graph_utils
 from chemgrid_game.chemistry.molecule import Bond
 from chemgrid_game.chemistry.molecule import Molecule
@@ -182,10 +183,10 @@ class ChemistryWrapper:
 
         return actions
 
-    def process_action(self, action: Action) -> List[Molecule]:
+    def process_action(self, action: Action, check_valid=True) -> List[Molecule]:
         if action.op == "join":
-            return self.chemistry.join_mols(*action.operands, offset=action.params)
+            return self.join_mols(*action.operands, offset=action.params, check_valid=check_valid)
         elif action.op == "break":
-            return self.chemistry.break_mol(*action.operands, edge=action.params[0])
+            return self.break_mol(*action.operands, edge=action.params)
         else:
             raise ValueError(f"Unknown op {action.op}")
