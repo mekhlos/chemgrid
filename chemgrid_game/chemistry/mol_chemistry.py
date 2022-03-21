@@ -16,7 +16,7 @@ from chemgrid_game.chemistry.molecule import Molecule
 class Action:
     op: str = "noop"
     operands: Tuple = ()
-    params: Tuple = ()
+    params: Optional = None
     res: Optional[Any] = None
 
     def add_res(self, res) -> "Action":
@@ -151,8 +151,8 @@ class ChemistryWrapper:
 
         return res
 
-    def join_mols(self, mol1: Molecule, mol2: Molecule, offset=(), check_valid=True) -> List[Molecule]:
-        if len(offset) == 0:
+    def join_mols(self, mol1: Molecule, mol2: Molecule, offset=None, check_valid=True) -> List[Molecule]:
+        if offset is None:
             return self._get_all_joins(mol1, mol2)
         return join_mols(mol1, mol2, *offset, check_valid=check_valid)
 
@@ -195,7 +195,3 @@ class ChemistryActionProcessor:
             return self.chemistry.break_mol(*action.operands, edge=action.params[0])
         else:
             raise ValueError(f"Unknown op {action.op}")
-
-
-if __name__ == '__main__':
-    pass

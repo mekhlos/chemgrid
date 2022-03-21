@@ -31,6 +31,7 @@ class GameBackend:
             logging_level: str = "INFO",
             inventory_generators=None,
             target_generators=None,
+            chemistry=None
 
     ):
         if contracts is None:
@@ -55,7 +56,9 @@ class GameBackend:
         self.logger = setup_logger(logging_level)
         self.contract_queue = deque()
         self.reached_target = [False] * self.n_agents
-        self.chemistry = ChemistryWrapper()
+        if chemistry is None:
+            chemistry = ChemistryWrapper()
+        self.chemistry = chemistry
 
     def check_contracts(self):
         for agent_id in range(self.n_agents):
@@ -111,29 +114,18 @@ class GameBackend:
             self.inventories[agent_id].append(mol_id)
             self.contract_queue.append((agent_id, mol_id))
 
-    def process_join_action(self, action: Action) -> List[Molecule]:
-        mol1_id, mol2_id = action.operands
-        mol1, mol2 = self.archive[mol1_id], self.archive[mol2_id]
-        offset = action.params
-        new_mols = self.chemistry.join_mols(mol1, mol2, offset)
-        return new_mols
-
-    def process_break_action(self, action: Action) -> List[Molecule]:
-        mol_id, = action.operands
-        mol = self.archive[mol_id]
-        edge = action.params or None
-        new_mols = self.chemistry.break_mol(mol, edge)
-        return new_mols
-
     def _step_one(self, agent_id: int, action: Action):
         self.logger.debug("Action: %s" % action.op)
         if action.op == "join":
-            new_mols = self.process_join_action(action)
+            mol1, mol2 = [self.archive[i] for i in action.operands]
+            new_mols = self.chemistry.join_mols(mol1, mol2, action.params)
+
             for new_mol in new_mols:
                 self.add_mol(agent_id, new_mol, parent_op=action.op, parent_ids=action.operands)
 
         elif action.op == "break":
-            new_mols = self.process_break_action(action)
+            mol, = [self.archive[i] for i in action.operands]
+            new_mols = self.chemistry.break_mol(mol, action.params)
             for new_mol in new_mols:
                 self.add_mol(agent_id, new_mol, parent_op=action.op, parent_ids=action.operands)
 
