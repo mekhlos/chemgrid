@@ -8,7 +8,6 @@ from typing import Set
 from typing import Tuple
 
 import numpy as np
-
 from chemgrid_game.chemistry.molecule import Molecule
 from chemgrid_game.game_backend import Contract
 
@@ -37,8 +36,8 @@ class Config:
     width: int = 10
     height: int = 10
     margin: int = 5
-    mol_grid_length = 8
-    chem_grid_length = 8
+    mol_grid_length: int = 8
+    chem_grid_length: int = 8
     n_agents: int = 1
     visible_inventory_len: int = 4
     visible_contract_viewer_len: int = 3
