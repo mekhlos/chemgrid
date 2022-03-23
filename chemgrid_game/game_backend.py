@@ -7,7 +7,6 @@ from typing import Set
 from typing import Tuple
 
 import numpy as np
-
 from chemgrid_game.chemistry.mol_chemistry import Action
 from chemgrid_game.chemistry.mol_chemistry import ChemistryWrapper
 from chemgrid_game.chemistry.molecule import Molecule
@@ -150,7 +149,7 @@ class GameBackend:
         [self._step_one(a_id, action) for a_id, action in enumerate(actions)]
         self.check_contracts()
 
-        return self.get_states(), self.compute_rewards(), self.is_done(), {}
+        return self.get_states(), self.compute_rewards(), self.is_done(), [{} for _ in range(self.n_agents)]
 
     def reset(self) -> Tuple[State]:
         self.archive.reset()

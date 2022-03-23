@@ -156,11 +156,14 @@ class ChemistryWrapper:
             return self._get_all_joins(mol1, mol2)
         return join_mols(mol1, mol2, *offset, check_valid=check_valid)
 
-    def break_mol(self, mol: Molecule, edge: Bond = None) -> List[Molecule]:
+    def break_mol(self, mol: Molecule, edge: Bond = None, check_valid=True) -> List[Molecule]:
         if edge is None:
             return self._get_all_breaks(mol)
 
-        return break_mol(mol, edge)
+        if not check_valid or edge in self.find_cut_edges(mol):
+            return break_mol(mol, edge)
+
+        return []
 
     def get_valid_actions(
             self,
@@ -187,6 +190,6 @@ class ChemistryWrapper:
         if action.op == "join":
             return self.join_mols(*action.operands, offset=action.params, check_valid=check_valid)
         elif action.op == "break":
-            return self.break_mol(*action.operands, edge=action.params)
+            return self.break_mol(*action.operands, edge=action.params, check_valid=check_valid)
         else:
             raise ValueError(f"Unknown op {action.op}")
