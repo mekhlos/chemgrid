@@ -25,10 +25,10 @@ class ChemGridEnv(gym.Env):
             target_generators=config.target_generators,
             logging_level=config.logging_level
         )
-        self.game = Game(frontend, backend, config)
+        self._game = Game(frontend, backend, config)
         self.logger = setup_logger(self.__class__.__name__, config.logging_level)
 
-        self.height, self.width = self.game.shape
+        self.height, self.width = self._game.shape
         shape = self.height, self.width, 3
         self.observation_space = gym.spaces.Box(low=0, high=255, shape=shape, dtype=np.uint8)
 
@@ -39,11 +39,11 @@ class ChemGridEnv(gym.Env):
 
         self.observation_space = gym.spaces.Tuple([self.observation_space] * self.n_agents)
         self.action_space = gym.spaces.Tuple([self.action_space] * self.n_agents)
-        self.dones = [False] * self.n_agents
+        self._dones = [False] * self.n_agents
 
     def step(self, action: Tuple[np.ndarray]):
         action = np.array(action)
-        if all(self.dones):
+        if all(self._dones):
             raise RuntimeError("Reset env before step")
 
         infos = [{}] * self.n_agents
@@ -53,26 +53,26 @@ class ChemGridEnv(gym.Env):
             click_coords = np.stack(np.unravel_index(action, (self.height, self.width))).T
 
         self.logger.debug("Sending actions: %s", click_coords)
-        rewards, self.dones = self.game.step(tuple(click_coords))
+        rewards, self._dones = self._game.step(tuple(click_coords))
 
-        return self.get_observation(), tuple(rewards), tuple(self.dones), tuple(infos)
+        return self.get_observation(), tuple(rewards), tuple(self._dones), tuple(infos)
 
     def reset(self, **kwargs):
-        self.game.reset()
+        self._game.reset()
         self.logger.debug("reset")
-        self.done = False
+        self._dones = [False] * self.n_agents
         return self.get_observation()
 
     def render(self, mode="human"):
         if mode == "rgb_array":
             return self.get_observation()
         elif mode == "human":
-            self.game.render()
+            self._game.render()
         else:
             super().render(mode=mode)  # raise an exception
 
     def get_observation(self) -> np.ndarray:
-        return np.stack(self.game.get_observation())
+        return np.stack(self._game.get_observation())
 
     def close(self):
-        self.game.close()
+        self._game.close()

@@ -1,1 +1,2 @@
 from chemgrid_game.gym_env.chemgrid_env import ChemGridEnv
+from chemgrid_game.gym_env.backend_env import ChemGridBackendEnv

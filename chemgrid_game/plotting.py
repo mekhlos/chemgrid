@@ -63,7 +63,8 @@ def plot_atoms_list(
         m=None, n=1,
         title: str = None,
         show=True,
-        background: bool = False
+        background: bool = False,
+        constrained_layout: bool = False
 ):
     data = np.array(atoms)
     n_imgs, grid_h, grid_w = data.shape
@@ -71,7 +72,7 @@ def plot_atoms_list(
         m, n = int(np.ceil(np.sqrt(n_imgs))), int(np.ceil(np.sqrt(n_imgs)))
 
     h, w = m * grid_h * scale, n * grid_w * scale
-    fig, axs = plt.subplots(m, n, figsize=(w, h), constrained_layout=True)
+    fig, axs = plt.subplots(m, n, figsize=(w, h), constrained_layout=constrained_layout)
     if m * n > 1:
         axs = axs.flatten()
     else:
@@ -84,7 +85,6 @@ def plot_atoms_list(
                 ax.set_title(titles[i])
         else:
             ax.axis("off")
-
 
     if title:
         fig.suptitle(title)
