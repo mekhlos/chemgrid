@@ -36,8 +36,7 @@ class Config:
     width: int = 10
     height: int = 10
     margin: int = 5
-    mol_grid_length: int = 8
-    chem_grid_length: int = 8
+    grid_size: int = 8
     n_agents: int = 1
     visible_inventory_len: int = 4
     visible_contract_viewer_len: int = 3
@@ -115,13 +114,13 @@ class Config:
         return scaled_locations
 
     def get_tiny_mol_size(self) -> int:
-        return self.mol_grid_length * self.pixel_size + (self.mol_grid_length - 1) * self.pixel_pad
+        return self.grid_size * self.pixel_size + (self.grid_size - 1) * self.pixel_pad
 
     def get_inventory_size(self) -> int:
         return self.visible_inventory_len * self.get_tiny_mol_size() + (self.visible_inventory_len - 1) * self.margin
 
     def get_big_mol_size(self) -> float:
-        return self.mol_grid_length * self.atom_width + (self.mol_grid_length - 1) * self.margin
+        return self.grid_size * self.atom_width + (self.grid_size - 1) * self.margin
 
 
 if __name__ == '__main__':

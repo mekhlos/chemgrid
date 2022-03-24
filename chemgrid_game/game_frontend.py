@@ -102,7 +102,7 @@ class AcceptButton(Button):
         action = Action("noop")
 
         if game_state.mode == Menu.CREATE_CONTRACT:
-            ask_mol = Molecule(game_state.demo_molecule.atoms.copy(), max_size=game_state.config.mol_grid_length)
+            ask_mol = Molecule(game_state.demo_molecule.atoms.copy(), max_size=game_state.config.grid_size)
             offer, ask = hash(game_state.inventory[mol1_id]), hash(ask_mol)
             game_state.mol_archive[ask] = ask_mol
             action = Action("contract", (offer, ask), ())
@@ -270,8 +270,8 @@ class GridSprite(ClickySpriteWithImg):
         conf = game_state.config
         mol_w, mol_h = conf.width, conf.height
 
-        for row in range(conf.mol_grid_length):
-            for col in range(conf.mol_grid_length):
+        for row in range(conf.grid_size):
+            for col in range(conf.grid_size):
                 x = (conf.margin + mol_w) * col
                 y = (conf.margin + mol_h) * row
 
@@ -332,8 +332,8 @@ class GameMolecule(ClickySpriteWithImg):
         mol_w, mol_h = conf.width, conf.height
         atoms = self.molecule.atoms
 
-        for row in range(conf.mol_grid_length):
-            for col in range(conf.mol_grid_length):
+        for row in range(conf.grid_size):
+            for col in range(conf.grid_size):
                 atom = atoms[row, col]
                 if atom > 0:
                     x = (conf.margin + mol_w) * col
@@ -399,8 +399,8 @@ class TinyMolecule(ClickySpriteWithImg):
             d = conf.get_tiny_mol_size()
             pygame.draw.rect(self.image, WHITE, (0, 0, d, d), max(int(conf.scale), 1))
 
-        for row in range(conf.mol_grid_length):
-            for column in range(conf.mol_grid_length):
+        for row in range(conf.grid_size):
+            for column in range(conf.grid_size):
                 atom = self.molecule.atoms[row, column]
                 if atom > 0:
                     color = game_state.config.atom_colors[atom]
@@ -726,21 +726,21 @@ class GameFrontend:
         self.game_state.accept = False
 
         if join_pos1 is not None:
-            shifted1 = graph_utils.shift_atoms(mol1.atoms, *join_pos1, self.config.mol_grid_length)
+            shifted1 = graph_utils.shift_atoms(mol1.atoms, *join_pos1, self.config.grid_size)
             # Check for overlap
-            if graph_utils.goes_offscreen(mol1.atoms, *join_pos1, self.config.mol_grid_length):
+            if graph_utils.goes_offscreen(mol1.atoms, *join_pos1, self.config.grid_size):
                 self.logger.debug("Join failed (mol 1 goes offscreen)")
             else:
                 mol = Molecule(shifted1, adjust_top_left=False)
                 mol_sprite = GameMolecule(**self.config.locations["game_molecule"], molecule=mol)
                 self.active_group.add(mol_sprite)
                 if join_pos2 is not None:
-                    shifted2 = graph_utils.shift_atoms(mol2.atoms, *join_pos2, self.config.mol_grid_length)
+                    shifted2 = graph_utils.shift_atoms(mol2.atoms, *join_pos2, self.config.grid_size)
 
                     self.logger.debug("shifted 1: \n%s" % shifted1)
                     self.logger.debug("shifted 2: \n%s" % shifted2)
 
-                    if graph_utils.goes_offscreen(mol2.atoms, *join_pos2, self.config.mol_grid_length):
+                    if graph_utils.goes_offscreen(mol2.atoms, *join_pos2, self.config.grid_size):
                         self.logger.debug("Join failed (mol 2 goes offscreen)")
                     else:
                         combo_atoms = graph_utils.combine_atoms(shifted1, shifted2)

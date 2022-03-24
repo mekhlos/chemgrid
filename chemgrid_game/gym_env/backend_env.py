@@ -27,9 +27,9 @@ class ChemGridBackendEnv(gym.Env):
         )
         self.logger = setup_logger(self.__class__.__name__, config.logging_level)
         self.max_inv_size = max_inv_size
-        n_join_options = (config.mol_grid_length * 2 + 1) ** 2
-        n_break_options = config.mol_grid_length * config.mol_grid_length * 2
-        shape = [max_inv_size + 3, config.mol_grid_length, config.mol_grid_length]
+        n_join_options = (config.grid_size * 2 + 1) ** 2
+        n_break_options = config.grid_size * config.grid_size * 2
+        shape = [max_inv_size + 3, config.grid_size, config.grid_size]
         self.observation_space = gym.spaces.Box(low=0, high=3, shape=shape, dtype=np.uint8)
         nvec = [max_inv_size, n_break_options, n_join_options]
         self.action_space = gym.spaces.MultiDiscrete(nvec=nvec, dtype=np.uint8)
@@ -59,7 +59,7 @@ class ChemGridBackendEnv(gym.Env):
         return state
 
     def _break_offset_to_edge(self, offset: int) -> Optional[Bond]:
-        n = self._config.mol_grid_length
+        n = self._config.grid_size
 
         id1 = offset // 2
         if offset % 2 == 0:
@@ -74,7 +74,7 @@ class ChemGridBackendEnv(gym.Env):
             return frozenset(((x1, y1), (x2, y2)))
 
     def _join_offset_to_edge(self, offset: int) -> Tuple[int, int]:
-        d = self._config.mol_grid_length
+        d = self._config.grid_size
         n = d * 2 + 1
         x, y = np.unravel_index(offset, (n, n))
         return x - d, y - d
