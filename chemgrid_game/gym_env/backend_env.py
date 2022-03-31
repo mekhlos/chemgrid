@@ -28,7 +28,7 @@ class ChemGridBackendEnv(gym.Env):
         self.logger = setup_logger(self.__class__.__name__, config.logging_level)
         self.max_inv_size = max_inv_size
         n_join_options = (config.grid_size * 2 + 1) ** 2
-        n_break_options = config.grid_size * config.grid_size * 2
+        n_break_options = config.grid_size ** 2 * 2
         shape = [max_inv_size + 3, config.grid_size, config.grid_size]
         self.observation_space = gym.spaces.Box(low=0, high=3, shape=shape, dtype=np.uint8)
         nvec = [max_inv_size, n_break_options, n_join_options]
