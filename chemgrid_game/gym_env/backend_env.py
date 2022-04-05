@@ -13,7 +13,7 @@ from chemgrid_game.utils import setup_logger
 
 
 class ChemGridBackendEnv(gym.Env):
-    def __init__(self, max_inv_size: int = 100, **kwargs):
+    def __init__(self, max_inv_size: int = 100, done_on_survival: bool = False, **kwargs):
         config = Config(**kwargs)
         self.metadata = {'render.modes': ['human', 'rgb_array']}
         self._config = config
@@ -27,6 +27,7 @@ class ChemGridBackendEnv(gym.Env):
         )
         self.logger = setup_logger(self.__class__.__name__, config.logging_level)
         self.max_inv_size = max_inv_size
+        self.done_on_survival = done_on_survival
         n_join_options = (config.grid_size * 2 + 1) ** 2
         n_break_options = config.grid_size ** 2 * 2
         shape = [max_inv_size + 3, config.grid_size, config.grid_size, 3]
@@ -115,7 +116,10 @@ class ChemGridBackendEnv(gym.Env):
 
         self.logger.debug("Sending action: %s", str(action))
         states, rewards, dones, infos = self._backend.step((action,))
-        self._done = dones[0]
+        if self.done_on_survival:
+            self._done = rewards[0] > 0
+        else:
+            self._done = dones[0]
 
         self._update_obs(states)
 
