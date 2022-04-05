@@ -29,35 +29,35 @@ class ChemGridBackendEnv(gym.Env):
         self.max_inv_size = max_inv_size
         n_join_options = (config.grid_size * 2 + 1) ** 2
         n_break_options = config.grid_size ** 2 * 2
-        shape = [max_inv_size + 3, config.grid_size, config.grid_size]
-        self.observation_space = gym.spaces.Box(low=0, high=3, shape=shape, dtype=np.uint8)
+        shape = [max_inv_size + 3, config.grid_size, config.grid_size, 3]
+        self.observation_space = gym.spaces.Box(low=0, high=1, shape=shape, dtype=np.uint8)
         nvec = [max_inv_size, n_break_options, n_join_options]
         self.action_space = gym.spaces.MultiDiscrete(nvec=nvec, dtype=np.uint8)
         self._done = False
-        self._selected_mol_pos1 = 0
-        self._selected_mol_pos2 = 0
-        self._state = None
+        self._selected_mol_id1 = None
+        self._selected_mol_id2 = None
+        self._obs, self._rgb_obs = None, None
 
-    def _get_state(self, states) -> np.ndarray:
+    def _update_obs(self, states):
         inventory_hashes, target_hash, _ = states[0]
         inventory = [self._backend.archive[i].atoms for i in inventory_hashes]
         target = self._backend.archive[target_hash].atoms
-        if self._selected_mol_pos1 != 0:
-            selected_mol1 = inventory[self._selected_mol_pos1 - 1]
+        if self._selected_mol_id1 is not None:
+            selected_mol1 = inventory[self._selected_mol_id1]
         else:
             selected_mol1 = np.zeros_like(target)
 
-        if self._selected_mol_pos2 != 0:
-            selected_mol2 = inventory[self._selected_mol_pos2 - 1]
+        if self._selected_mol_id2 is not None:
+            selected_mol2 = inventory[self._selected_mol_id2]
         else:
             selected_mol2 = np.zeros_like(target)
 
-        state = np.concatenate([np.stack([target, selected_mol1, selected_mol2]), inventory])
-        # pad states so that observation shape is always the same
-        diff = max(0, self.max_inv_size + 3 - len(state))
-        pad = np.zeros((diff, *state.shape[1:]))
-        state = np.concatenate([state, pad])
-        return state
+        obs = np.concatenate([np.stack([target, selected_mol1, selected_mol2]), inventory])
+        # pad obs so that its shape is always the same
+        diff = max(0, self.max_inv_size + 3 - len(obs))
+        pad = np.zeros((diff, *obs.shape[1:]))
+        obs = np.concatenate([obs, pad])
+        self._obs, self._rgb_obs = obs, self._to_rgb(obs)
 
     def _break_offset_to_edge(self, offset: int) -> Optional[Bond]:
         n = self._config.grid_size
@@ -68,7 +68,7 @@ class ChemGridBackendEnv(gym.Env):
         else:
             id2 = id1 + n
 
-        if id2 < n:
+        if id2 < n * n:
             x1, y1 = np.unravel_index(id1, (n, n))
             x2, y2 = np.unravel_index(id2, (n, n))
 
@@ -84,61 +84,62 @@ class ChemGridBackendEnv(gym.Env):
         if self._done:
             raise RuntimeError("Reset env before step")
         inventory = self._backend.inventories[0]
+        action_type_id, break_offset, join_offset = action
+        mol_id = None if action_type_id < 3 else action_type_id - 3
+        action_type_id = min(action_type_id, 3)
+        action_type = ["reset", "break", "join", "mol_selection"][action_type_id]
 
-        if self._selected_mol_pos1 == 0:
-            if action[0] <= len(inventory):
-                self._selected_mol_pos1 = action[0]
-            action = Action()
-        else:
-            mol_hash = self._backend.inventories[0][self._selected_mol_pos1 - 1]
-            if self._selected_mol_pos2 == 0:
-                if action[0] == 0:
-                    offset = action[1]
-                    edge = self._break_offset_to_edge(offset)
-                    if edge is not None:
-                        action = Action("break", (mol_hash,), edge)
-                    else:
-                        action = Action()
-                    self._selected_mol_pos1 = 0
-
-                else:
-                    if action[0] <= len(inventory):
-                        self._selected_mol_pos2 = action[0]
-                    action = Action()
-            else:
-                mol_hash2 = self._backend.inventories[0][self._selected_mol_pos2 - 1]
-                offset = action[2]
-                offset = self._join_offset_to_edge(offset)
-                action = Action("join", (mol_hash, mol_hash2), offset)
-                self._selected_mol_pos1 = 0
-                self._selected_mol_pos2 = 0
+        action = Action()
+        if action_type == "reset":
+            self._selected_mol_id1 = None
+            self._selected_mol_id2 = None
+        elif action_type == "break" and self._selected_mol_id1 is not None:
+            mol_hash = inventory[self._selected_mol_id1]
+            edge = self._break_offset_to_edge(break_offset)
+            if edge is not None:
+                action = Action("break", (mol_hash,), edge)
+            self._selected_mol_id1 = None
+            self._selected_mol_id2 = None
+        elif action_type == "join" and self._selected_mol_id2 is not None:
+            mol_hash1 = inventory[self._selected_mol_id1]
+            mol_hash2 = inventory[self._selected_mol_id2]
+            offset = self._join_offset_to_edge(join_offset)
+            action = Action("join", (mol_hash1, mol_hash2), offset)
+            self._selected_mol_id1 = None
+            self._selected_mol_id2 = None
+        elif action_type == "mol_selection":
+            if self._selected_mol_id1 is None and mol_id < len(inventory):
+                self._selected_mol_id1 = mol_id
+            elif self._selected_mol_id2 is None and mol_id < len(inventory):
+                self._selected_mol_id2 = mol_id
 
         self.logger.debug("Sending action: %s", str(action))
         states, rewards, dones, infos = self._backend.step((action,))
         self._done = dones[0]
 
-        self._state = self._get_state(states)
+        self._update_obs(states)
 
-        return self._state, rewards[0], self._done, infos[0]
+        return self._rgb_obs, rewards[0], self._done, infos[0]
 
     def reset(self, **kwargs) -> np.ndarray:
         states = self._backend.reset()
         self.logger.debug("reset")
         self._done = False
-        self._selected_mol_pos1 = 0
-        self._selected_mol_pos2 = 0
-        self._state = self._get_state(states)
-        return self._state
+        self._selected_mol_id1 = None
+        self._selected_mol_id2 = None
+        self._update_obs(states)
+        return self._rgb_obs
+
+    def _to_rgb(self, obs: np.ndarray) -> np.ndarray:
+        return np.stack([obs == i for i in [1, 2, 3]], -1).astype(np.uint8) * 255
 
     def render(self, mode="human"):
         if mode == "rgb_array":
-            n, h, w = self._state.shape
-            img = self._state.reshape((n * h, w))
-            rgb_img = np.stack([img == i for i in [1, 2, 3]], -1).astype(int) * 255
-            return rgb_img
+            n, h, w, d = self._rgb_obs.shape
+            return self._rgb_obs.reshape((n * h, w, d))
         elif mode == "human":
-            titles = ["target", "selection 1", "selection 2"] + [f"inv {i}" for i in range(len(self._state) - 3)]
-            plot_atoms_list(self._state, titles=titles, background=True, constrained_layout=False, scale=0.5)
+            titles = ["target", "selection 1", "selection 2"] + [f"inv {i}" for i in range(len(self._obs) - 3)]
+            plot_atoms_list(self._obs, titles=titles, background=True, constrained_layout=False, scale=0.5)
         else:
             super().render(mode=mode)  # raise an exception
 
