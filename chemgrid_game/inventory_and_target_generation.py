@@ -71,11 +71,17 @@ class RandomInventoryGenerator(InventoryGeneratorBase):
         self.regenerate = regenerate
         self._inventory = None
         self._mol_generator = RandomMolGenerator(grid_size, n_colors, rng=self.rng)
+        self._retries = 100
 
     def reset(self) -> List[Molecule]:
         if self.regenerate or self._inventory is None:
             n = self.rng.integers(self.min_length, self.max_length + 1)
-            self._inventory = [self._mol_generator(self.min_atoms, self.max_atoms) for _ in range(n)]
+            self._inventory = []
+            for _ in range(self._retries):
+                while len(self._inventory) < n:
+                    mol = self._mol_generator(self.min_atoms, self.max_atoms)
+                    if mol not in self._inventory:
+                        self._inventory.append(mol)
 
         return self._inventory
 
@@ -106,7 +112,7 @@ class RandomTargetGenerator(TargetGeneratorBase):
         self.min_atoms = min_atoms
         self.max_atoms = max_atoms
         self.regenerate = regenerate
-        self._target = None
+        self._target: Optional[Molecule] = None
         self._mol_generator = RandomMolGenerator(grid_size, n_colors, rng=rng)
 
     def reset(self) -> Molecule:

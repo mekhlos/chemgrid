@@ -16,7 +16,7 @@ from chemgrid_game.chemistry.molecule import Molecule
 class Action:
     op: str = "noop"
     operands: Tuple = ()
-    params: Tuple = ()
+    params: Optional = None
     res: Optional[Any] = None
 
     def add_res(self, res) -> "Action":
@@ -151,51 +151,45 @@ class ChemistryWrapper:
 
         return res
 
-    def join_mols(self, mol1: Molecule, mol2: Molecule, offset=(), check_valid=True) -> List[Molecule]:
-        if len(offset) == 0:
+    def join_mols(self, mol1: Molecule, mol2: Molecule, offset=None, check_valid=True) -> List[Molecule]:
+        if offset is None:
             return self._get_all_joins(mol1, mol2)
         return join_mols(mol1, mol2, *offset, check_valid=check_valid)
 
-    def break_mol(self, mol: Molecule, edge: Bond = None) -> List[Molecule]:
+    def break_mol(self, mol: Molecule, edge: Bond = None, check_valid=True) -> List[Molecule]:
         if edge is None:
             return self._get_all_breaks(mol)
 
-        return break_mol(mol, edge)
+        if not check_valid or edge in self.find_cut_edges(mol):
+            return break_mol(mol, edge)
 
-
-class ChemistryActionProcessor:
-    def __init__(self, use_caching=True):
-        self.chemistry = ChemistryWrapper(use_caching=use_caching)
+        return []
 
     def get_valid_actions(
             self,
             mol1: Molecule,
             mol2: Optional[Molecule] = None,
-            op: Optional[str] = None
+            op: Optional[str] = None,
+            check_join_valid: bool = False
     ) -> List[Action]:
         actions = []
         if op == "break" or op is None:
-            cut_edges = self.chemistry.find_cut_edges(mol1)
+            cut_edges = self.find_cut_edges(mol1)
             for edge in cut_edges:
-                actions.append(Action(op="break", operands=(hash(mol1),), params=(edge,)))
+                actions.append(Action(op="break", operands=(hash(mol1),), params=edge))
 
-        if op == "join" or op is None and mol2 is not None:
-            offsets = self.chemistry.find_join_offsets(mol1, mol2, check_valid=True)
+        if mol2 is not None and (op == "join" or op is None):
+            offsets = self.find_join_offsets(mol1, mol2, check_valid=check_join_valid)
             for offset in offsets:
                 hash1, hash2 = hash(mol1), hash(mol2)
-                new_mol = self.chemistry.join_mols(mol1, mol2, offset, check_valid=False)
-                actions.append(Action(op="join", operands=(hash1, hash2), params=offset, res=hash(new_mol)))
+                actions.append(Action(op="join", operands=(hash1, hash2), params=offset))
 
         return actions
 
-    def process_action(self, action: Action) -> List[Molecule]:
+    def process_action(self, action: Action, check_valid=True) -> List[Molecule]:
         if action.op == "join":
-            return self.chemistry.join_mols(*action.operands, offset=action.params)
+            return self.join_mols(*action.operands, offset=action.params, check_valid=check_valid)
         elif action.op == "break":
-            return self.chemistry.break_mol(*action.operands, edge=action.params[0])
+            return self.break_mol(*action.operands, edge=action.params, check_valid=check_valid)
         else:
             raise ValueError(f"Unknown op {action.op}")
-
-
-if __name__ == '__main__':
-    pass

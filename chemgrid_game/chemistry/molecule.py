@@ -57,6 +57,9 @@ class Molecule:
 
         return self._cut_edges
 
+    def count_atoms(self) -> int:
+        return np.sum(self.atoms > 0).item()
+
     def get_rect(self):
         is_non_empty_row = self.atoms.any(1)
         is_non_empty_col = self.atoms.any(0)
@@ -94,12 +97,11 @@ class Molecule:
             p.parent.mkdir(exist_ok=True)
         return p
 
-    def get_mol_path(self) -> str:
+    def get_mol_path(self) -> Path:
         p = CHEMGRID_GAME_PATH.joinpath(f"files/mols/{hash(self)}.json")
-
         if not p.parent.is_dir():
             p.parent.mkdir(exist_ok=True)
-        return str(p)
+        return p
 
     def save(self) -> str:
         p = self.get_mol_path()
