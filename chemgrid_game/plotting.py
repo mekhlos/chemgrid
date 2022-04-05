@@ -66,7 +66,7 @@ def plot_atoms_list(
         background: bool = False,
         constrained_layout: bool = False
 ):
-    data = np.array(atoms)
+    data = np.array(atoms, dtype=np.uint8)
     n_imgs, grid_h, grid_w = data.shape
     if m is None:
         m, n = int(np.ceil(np.sqrt(n_imgs))), int(np.ceil(np.sqrt(n_imgs)))

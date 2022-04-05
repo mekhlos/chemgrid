@@ -53,9 +53,10 @@ class ChemGridBackendEnv(gym.Env):
             selected_mol2 = np.zeros_like(target)
 
         state = np.concatenate([np.stack([target, selected_mol1, selected_mol2]), inventory])
-        # diff = max(0, self.max_inv_size + 3 - len(state))
-        # pad = np.zeros(diff, *state.shape[1:])
-        # state = np.concatenate([state, pad])
+        # pad states so that observation shape is always the same
+        diff = max(0, self.max_inv_size + 3 - len(state))
+        pad = np.zeros((diff, *state.shape[1:]))
+        state = np.concatenate([state, pad])
         return state
 
     def _break_offset_to_edge(self, offset: int) -> Optional[Bond]:

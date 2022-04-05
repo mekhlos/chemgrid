@@ -57,6 +57,9 @@ class Molecule:
 
         return self._cut_edges
 
+    def count_atoms(self) -> int:
+        return np.sum(self.atoms > 0).item()
+
     def get_rect(self):
         is_non_empty_row = self.atoms.any(1)
         is_non_empty_col = self.atoms.any(0)
