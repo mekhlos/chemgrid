@@ -1,3 +1,4 @@
+import copy
 from typing import Optional
 from typing import Tuple
 
@@ -114,16 +115,19 @@ class ChemGridBackendEnv(gym.Env):
             elif self._selected_mol_id2 is None and mol_id < len(inventory):
                 self._selected_mol_id2 = mol_id
 
+        agent_id = 0
         self.logger.debug("Sending action: %s", str(action))
         states, rewards, dones, infos = self._backend.step((action,))
         if self.done_on_survival:
-            self._done = rewards[0] > 0
+            self._done = rewards[agent_id] > 0
         else:
-            self._done = dones[0]
+            self._done = dones[agent_id]
 
         self._update_obs(states)
+        if rewards[agent_id] > 0 or self._done:
+            infos[agent_id]["target"] = copy.deepcopy(self._backend.target_generators[agent_id].target)
 
-        return self._rgb_obs, rewards[0], self._done, infos[0]
+        return self._rgb_obs, rewards[agent_id], self._done, infos[agent_id]
 
     def reset(self, **kwargs) -> np.ndarray:
         states = self._backend.reset()

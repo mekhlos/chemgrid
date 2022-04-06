@@ -14,6 +14,11 @@ class TargetGeneratorBase(abc.ABC):
     def __call__(self):
         return copy.deepcopy(self.reset())
 
+    @property
+    @abc.abstractmethod
+    def target(self) -> Molecule:
+        pass
+
     @abc.abstractmethod
     def reset(self) -> Molecule:
         pass
@@ -86,9 +91,13 @@ class RandomInventoryGenerator(InventoryGeneratorBase):
         return self._inventory
 
 
-class CustomTargetGenerator(InventoryGeneratorBase):
+class CustomTargetGenerator(TargetGeneratorBase):
     def __init__(self, target: Molecule):
         self._target = target
+
+    @property
+    def target(self) -> Molecule:
+        return self._target
 
     def reset(self) -> Molecule:
         return self._target
@@ -114,6 +123,10 @@ class RandomTargetGenerator(TargetGeneratorBase):
         self.regenerate = regenerate
         self._target: Optional[Molecule] = None
         self._mol_generator = RandomMolGenerator(grid_size, n_colors, rng=rng)
+
+    @property
+    def target(self) -> Molecule:
+        return self._target
 
     def reset(self) -> Molecule:
         if self.regenerate or self._target is None:
